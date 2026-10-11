@@ -3,8 +3,9 @@ import { Check, RotateCcw } from "lucide-react";
 import { LiquidButton } from "../forum/motion/LiquidButton";
 import { StatusPill } from "../forum/motion/StatusPill";
 import { BotFigure } from "./BotFigure";
+import { ThinkingSwitch } from "./ThinkingSwitch";
 import { ShapeThumb } from "./ShapeThumb";
-import { colorIds, colorNames, resetPrefs, shapes, swatchOf, updatePrefs, usePrefs, useSync } from "./prefs";
+import { colorIds, colorNames, resetPrefs, shapes, swatchOf, thinkingModes, updatePrefs, usePrefs, useSync } from "./prefs";
 import "./assistant-settings.css";
 
 export default function AssistantSettings() {
@@ -71,6 +72,12 @@ export default function AssistantSettings() {
                 </button>
               ))}
             </div>
+          </fieldset>
+
+          <fieldset className="assistant-field">
+            <legend>思考模式</legend>
+            <ThinkingSwitch />
+            <p className="assistant-field-hint">{thinkingModes.find((m) => m.id === prefs.thinking)?.hint}。也可以随时在对话框里切换。</p>
           </fieldset>
         </div>
       </div>

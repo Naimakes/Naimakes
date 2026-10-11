@@ -185,6 +185,9 @@ const moduleKeys = Object.keys(moduleLabels);
 const noticeKeys = ["letters", "author", "board", "topic", "reply", "mention", "interaction", "announcement", "other"];
 export const shapes = ["blob", "pebble", "bean", "egg", "squircle", "tablet", "capsule", "cylinder", "hex", "gem", "crystal", "wedge", "shield", "dome", "arch", "cloud", "teardrop", "leaf", "square", "sparkle", "clover", "flower", "heart", "house", "star"];
 export const colors = ["black", "brown", "red", "orange", "yellow", "green", "cyan", "blue", "violet", "magenta", "gray"];
+const thinkingLabels = { fast: "快速", balanced: "均衡", deep: "深入" };
+const thinkingModes = Object.keys(thinkingLabels);
+const defaultLook = { shape: "blob", color: "black", thinking: "fast" };
 const reasonLabels = { spam: "垃圾内容", ad: "广告", abuse: "辱骂", attack: "人身攻击", harassment: "恶意骚扰", illegal: "违规内容", discomfort: "不适内容", impersonation: "冒充他人", flood: "恶意刷屏", other: "其他" };
 const reportReasons = Object.keys(reasonLabels);
 const flags = (keys, what) => ({ type: "object", description: what, properties: Object.fromEntries(keys.map((k) => [k, { type: "boolean" }])), additionalProperties: false, minProperties: 1 });
@@ -518,7 +521,7 @@ const actionList = [
     title: "查看我的设置",
     kind: "read",
     activity: "正在查看你的设置…",
-    description: "读取当前用户的昵称、简介、主页隐私选项、个人标签、主页模块顺序、各类通知开关以及 Naimakes 的外观。修改设置前先调用。",
+    description: "读取当前用户的昵称、简介、主页隐私选项、个人标签、主页模块顺序、各类通知开关，以及 Naimakes 的外观和思考模式。修改设置前先调用。",
     input: shape({}),
     async run(_input, { call }) {
       const me = await call("GET", "/me");
@@ -534,7 +537,7 @@ const actionList = [
           profile_tags: me.profile?.tags,
           module_order: me.profile?.modules,
           notifications: Object.fromEntries(notices.options.map((o) => [o.id, { label: o.label, on: notices.settings[o.id], ...(o.locked ? { locked: true } : {}) }])),
-          assistant_look: { shape: "blob", color: "black", ...look.prefs },
+          assistant: { ...defaultLook, ...look.prefs },
         },
       };
     },
@@ -821,18 +824,19 @@ const actionList = [
     },
   },
   {
-    name: "set_assistant_look",
-    title: "Naimakes 外观",
+    name: "update_assistant_settings",
+    title: "Naimakes 设置",
     kind: "write",
-    description: `修改 Naimakes（你自己）的形状和颜色。形状：${shapes.join(", ")}；颜色：${colors.join(", ")}。`,
-    input: shape({ shape: oneOf(shapes, "形状"), color: oneOf(colors, "颜色") }),
+    description: `修改 Naimakes（你自己）的形状、颜色或思考模式，只传要改的项。形状：${shapes.join(", ")}；颜色：${colors.join(", ")}；思考模式：fast 快速、balanced 均衡、deep 深入（从用户的下一个问题开始生效）。`,
+    input: shape({ shape: oneOf(shapes, "形状"), color: oneOf(colors, "颜色"), thinking: oneOf(thinkingModes, "思考模式") }),
     async run(input, { call }) {
+      if (!input.shape && !input.color && !input.thinking) throw new ActionError("请指定要修改的形状、颜色或思考模式。");
       const current = await call("GET", "/me/assistant");
-      const next = { shape: "blob", color: "black", ...current.prefs };
-      if (input.shape) next.shape = input.shape;
-      if (input.color) next.color = input.color;
+      const next = { ...defaultLook, ...current.prefs };
+      for (const key of ["shape", "color", "thinking"]) if (input[key]) next[key] = input[key];
       const { prefs, updated_at } = await call("PUT", "/me/assistant", { prefs: next });
-      return { data: { look: prefs }, summary: "已换上新外观", effect: { look: prefs, updated_at } };
+      const summary = input.thinking && !input.shape && !input.color ? `已切换为「${thinkingLabels[prefs.thinking]}」思考模式` : "已更新 Naimakes 设置";
+      return { data: { settings: prefs }, summary, effect: { look: prefs, updated_at } };
     },
   },
   {

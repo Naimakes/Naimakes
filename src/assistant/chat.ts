@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from "react";
+import { adoptPrefs, getPrefs, type AssistantPrefs } from "./prefs";
 import { info, type Attachment, type FileInfo } from "./attachments";
-import { adoptPrefs, type AssistantPrefs } from "./prefs";
 
 export type Source = { type: string; id: string; title: string; url: string; board: string; excerpt: string };
 export type ActionStatus = "pending" | "running" | "done" | "failed" | "cancelled" | "expired";
@@ -13,7 +13,7 @@ export type AgentAction = {
   url?: string;
   error?: string;
   preview?: { heading: string; fields: { label: string; value: string }[]; body: string };
-  effect?: { look?: AssistantPrefs; updated_at?: number };
+  effect?: { look?: Partial<AssistantPrefs>; updated_at?: number };
 };
 export type ChatMessage = {
   id: string;
@@ -188,6 +188,7 @@ export async function ask(question: string, page: { path: string; title: string;
       body: JSON.stringify({
         messages: [...history, { role: "user", content: text }],
         page,
+        thinking: getPrefs().thinking,
         ...(files.length ? { attachments: files.map(({ name, kind, mime, data }) => ({ name, kind, mime, data })) } : {}),
       }),
       signal: abort.signal,
