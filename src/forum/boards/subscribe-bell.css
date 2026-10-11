@@ -1,0 +1,104 @@
+.subscribe-bell.glass-btn {
+  position: relative;
+  width: 36px;
+  height: 36px;
+  color: var(--glass-text);
+  overflow: visible;
+}
+.subscribe-bell.glass-btn.is-subscribed {
+  color: var(--glass-selection-text);
+  background: var(--glass-selection-bg);
+  border-color: rgb(0 0 0 / .9);
+  box-shadow: var(--glass-selection-shadow);
+}
+.subscribe-bell.glass-btn:focus-visible { outline: 2px solid var(--glass-accent); outline-offset: 2px; }
+.bell-glyph {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  transform-origin: 50% 10%;
+}
+.bell-glyph > svg { display: block; }
+.bell-fill {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+}
+.bell-plus {
+  position: absolute;
+  top: -4px;
+  right: -5px;
+  display: grid;
+  place-items: center;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  color: #fff;
+  background: currentColor;
+  box-shadow: 0 0 0 1.5px rgb(255 255 255 / .95);
+}
+.bell-plus > svg { color: #fff; }
+.subscribe-bell .bell-plus { background: var(--glass-text); }
+.bell-halo {
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  border: 1.5px solid currentColor;
+  pointer-events: none;
+}
+@media (hover: hover) and (pointer: fine) {
+  .subscribe-bell[data-tooltip]::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    left: 50%;
+    bottom: calc(100% + 9px);
+    translate: -50% 4px;
+    padding: 6px 13px;
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 500;
+    line-height: 1.4;
+    white-space: nowrap;
+    color: var(--glass-text);
+    background: var(--glass-sheen), var(--glass-popup-bg);
+    border: 1px solid var(--glass-border);
+    box-shadow: var(--glass-rim), 0 8px 20px -10px rgb(0 0 0 / .3);
+    -webkit-backdrop-filter: var(--glass-blur);
+    backdrop-filter: var(--glass-blur);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .16s ease, translate .28s cubic-bezier(.22, .8, .25, 1);
+    z-index: 5;
+  }
+  .subscribe-bell[data-tooltip]:is(:hover, :focus-visible)::after {
+    opacity: 1;
+    translate: -50% 0;
+    transition-delay: .25s;
+  }
+}
+.profile-actions .subscribe-bell.glass-btn:not(.is-subscribed) {
+  color: #fff;
+  background: rgba(0, 0, 0, .72);
+  border-color: #ffffff35;
+  box-shadow: inset 0 1px 0 #ffffff21;
+}
+.profile-actions .subscribe-bell.glass-btn:not(.is-subscribed):hover { background: rgba(28, 28, 28, .8); }
+.profile-actions .subscribe-bell .bell-plus { background: var(--paper-peak); box-shadow: 0 0 0 1.5px rgb(0 0 0 / .35); }
+.profile-actions .subscribe-bell .bell-plus > svg { color: #111; }
+.profile-actions .subscribe-bell.glass-btn.is-subscribed {
+  color: #111;
+  background: var(--paper-peak);
+  border-color: #fff;
+}
+.subscribe-bell.is-compact.glass-btn { width: 30px; height: 30px; }
+@media (prefers-reduced-motion: reduce) {
+  .subscribe-bell[data-tooltip]::after { transition: none; }
+}
+.topic-card-footer .subscribe-bell.topic-card-bell.glass-btn {
+  margin-left: auto;
+  margin-right: 8px;
+  padding: 0;
+  border-radius: 50%;
+  gap: 0;
+}

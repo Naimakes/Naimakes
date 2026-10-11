@@ -1,0 +1,27 @@
+.landing-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 3000;
+  background: #fff;
+  opacity: 1;
+  transition: opacity 1.2s ease;
+}
+.landing-layer iframe {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+.landing-layer.is-leaving {
+  opacity: 0;
+  pointer-events: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .landing-layer {
+    transition: none;
+  }
+}
+.landing-open,
+.landing-open body {
+  overflow: hidden;
+}

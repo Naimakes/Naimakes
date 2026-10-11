@@ -1,0 +1,76 @@
+import {
+  Activity,
+  ArrowRightLeft,
+  ClipboardList,
+  Gavel,
+  AtSign,
+  Bell,
+  FilePenLine,
+  Flag,
+  Heart,
+  Hash,
+  KeyRound,
+  Lock,
+  LockOpen,
+  Megaphone,
+  MessageCircle,
+  MessageCircleOff,
+  PenLine,
+  Quote,
+  Reply,
+  ShieldAlert,
+  ShieldBan,
+  ShieldCheck,
+  ThumbsDown,
+  ThumbsUp,
+  Trash2,
+  UserCheck,
+  UserMinus,
+  UserPlus,
+  UserX,
+  type LucideIcon,
+} from "lucide-react";
+
+const kinds: Record<string, { Icon: LucideIcon; label: string }> = {
+  message: { Icon: MessageCircle, label: "私信" },
+  reply: { Icon: Reply, label: "回复" },
+  mention: { Icon: AtSign, label: "提到了你" },
+  follow: { Icon: UserPlus, label: "新粉丝" },
+  like: { Icon: Heart, label: "赞同" },
+  vote: { Icon: ThumbsUp, label: "赞同了评论" },
+  quote: { Icon: Quote, label: "引用" },
+  author_post: { Icon: PenLine, label: "作者新帖" },
+  board_post: { Icon: Bell, label: "版块新帖" },
+  topic_post: { Icon: Hash, label: "话题更新" },
+  announcement: { Icon: Megaphone, label: "站主公告" },
+  moderation: { Icon: ShieldAlert, label: "站务通知" },
+  appeal: { Icon: Gavel, label: "禁言申诉" },
+  admin_request: { Icon: ClipboardList, label: "删除申请" },
+  admin_action: { Icon: ShieldCheck, label: "管理员操作" },
+  system_event: { Icon: Activity, label: "系统事件" },
+};
+const moderationIcons: [RegExp, LucideIcon][] = [
+  [/举报|投诉/, Flag],
+  [/申请/, ClipboardList],
+  [/申诉/, Gavel],
+  [/关闭.*评论/, MessageCircleOff],
+  [/开放.*评论/, MessageCircle],
+  [/解除.*禁言|禁言.*解除/, LockOpen],
+  [/讨论.*禁言|帖子.*禁言/, Lock],
+  [/禁言/, ShieldBan],
+  [/删除/, Trash2],
+  [/移动/, ArrowRightLeft],
+  [/编辑/, FilePenLine],
+  [/停用/, UserX],
+  [/恢复/, UserCheck],
+  [/移出/, UserMinus],
+  [/撤销|权限|任命|版主|协管|管理员/, KeyRound],
+  [/欢迎|已恢复/, ShieldCheck],
+];
+export function noticeVisual(kind: string, text = "") {
+  const base = kinds[kind] || { Icon: Bell, label: "通知" };
+  if (kind === "vote" && /不赞同/.test(text)) return { Icon: ThumbsDown, label: "不赞同评论" };
+  if (kind !== "moderation" && kind !== "admin_action") return base;
+  const match = moderationIcons.find(([pattern]) => pattern.test(text));
+  return { ...base, Icon: match ? match[1] : base.Icon };
+}

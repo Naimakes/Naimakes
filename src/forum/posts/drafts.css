@@ -1,0 +1,232 @@
+:root .composer-footer > .composer-footer-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  margin: 0;
+  padding: 0 6px;
+  color: var(--muted);
+}
+:root .composer-footer > .composer-footer-note > svg { flex: none; margin-top: 2px; }
+:root .composer-footer > .composer-footer-note > span {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+:root .composer-footer > .composer-footer-note strong {
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.5;
+  color: var(--glass-text, var(--text));
+}
+:root .composer-footer > .composer-draft-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+}
+:root .composer-footer .drafts-wrap { display: grid; position: relative; }
+:root .composer-footer .composer-draft-actions > * > button.glass-btn,
+:root .composer-footer .composer-draft-actions > button.glass-btn {
+  width: 100%;
+  height: var(--control-h, 44px);
+  min-height: var(--control-h, 44px);
+  padding-inline: 20px;
+  justify-content: center;
+  gap: 9px;
+  font-size: 13px;
+  box-sizing: border-box;
+}
+
+:root .drafts-menu.liquid-popover {
+  display: grid;
+  gap: 14px;
+  width: min(420px, calc(100vw - 32px));
+  padding: 18px;
+  border-radius: var(--cover-radius, 26px);
+  color: var(--glass-text, var(--text));
+}
+:root .drafts-menu .liquid-popover-content { display: grid; gap: 14px; }
+:root .drafts-menu .liquid-menu-item { display: contents; }
+:root .drafts-menu .drafts-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 2px 6px 0;
+}
+:root .drafts-menu .drafts-head-text { display: grid; gap: 5px; min-width: 0; }
+:root .drafts-menu .drafts-head-text > strong { font-size: 15px; font-weight: 600; line-height: 1.4; }
+:root .drafts-menu .drafts-head-text > span { font-size: 12px; line-height: 1.6; color: var(--muted); }
+:root .drafts-menu .drafts-head > button.glass-btn {
+  flex: none;
+  height: var(--control-h-sm, 36px);
+  min-height: var(--control-h-sm, 36px);
+  padding-inline: 16px;
+  gap: 7px;
+  font-size: 12px;
+  box-sizing: border-box;
+}
+
+:root .drafts-menu .drafts-list {
+  display: grid;
+  gap: 10px;
+  max-height: min(48vh, 420px);
+  padding: 10px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border-radius: var(--cover-radius, 26px);
+  background: var(--glass-plate);
+  border: 1px solid var(--glass-plate-edge);
+  box-shadow: var(--glass-plate-shadow);
+  scrollbar-width: thin;
+}
+:root .drafts-menu .drafts-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  margin: 0;
+  padding: 26px 22px;
+  font-size: 12px;
+  line-height: 1.7;
+  text-align: center;
+  color: var(--muted);
+}
+:root .drafts-menu .draft-card {
+  position: relative;
+  display: flex;
+  border-radius: var(--cover-radius, 26px);
+  background: var(--glass-sheen), var(--glass-card-bg, var(--glass-bg));
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-rim), var(--glass-hairline, 0 0 0 0 transparent);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+}
+:root .drafts-menu .draft-card > .draft-card-open.glass-btn {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  padding: 16px 18px;
+  border: 0;
+  border-radius: inherit;
+  background: transparent;
+  box-shadow: none;
+  text-align: left;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+:root .drafts-menu .draft-card-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  color: var(--muted);
+  flex-wrap: wrap;
+}
+:root .drafts-menu .draft-card-kind,
+:root .drafts-menu .draft-card-board {
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--glass-hover);
+  font-size: 10px;
+  line-height: 1.6;
+  color: var(--secondary);
+}
+:root .drafts-menu .draft-card-board { margin-left: auto; }
+:root .drafts-menu .draft-card-title {
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.5;
+  color: var(--glass-text, var(--text));
+  overflow-wrap: anywhere;
+}
+:root .drafts-menu .draft-card-excerpt {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  font-size: 12px;
+  line-height: 1.7;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+:root .drafts-menu .draft-card-foot {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 7px;
+  min-height: var(--control-h-sm, 36px);
+  padding-right: 92px;
+  font-size: 11px;
+  color: var(--muted);
+}
+:root .drafts-menu .draft-tag {
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--glass-hover);
+  color: var(--secondary);
+}
+:root .drafts-menu .draft-card-extra { display: inline-flex; align-items: center; gap: 4px; }
+:root .drafts-menu .draft-card > .draft-import.glass-btn {
+  position: absolute;
+  right: 14px;
+  bottom: 14px;
+  height: var(--control-h-sm, 36px);
+  min-height: var(--control-h-sm, 36px);
+  padding-inline: 16px;
+  gap: 6px;
+  font-size: 12px;
+  box-sizing: border-box;
+}
+:root .drafts-menu .draft-check {
+  display: inline-grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 1px solid var(--glass-line);
+  background: var(--glass-bg);
+  color: var(--inverse);
+}
+:root .drafts-menu .draft-card.is-checked .draft-check {
+  background: var(--ink);
+  border-color: var(--ink);
+}
+:root .drafts-menu .draft-card.is-checked { border-color: color-mix(in srgb, var(--ink) 28%, var(--glass-border)); }
+
+:root .drafts-menu .drafts-bar {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: center;
+  gap: 10px;
+  padding: 0 2px 2px;
+}
+:root .drafts-menu .drafts-bar > .drafts-count {
+  grid-column: 1 / -1;
+  text-align: center;
+  font-size: 12px;
+  color: var(--muted);
+}
+:root .drafts-menu .drafts-bar > button.glass-btn {
+  width: 100%;
+  height: var(--control-h, 44px);
+  min-height: var(--control-h, 44px);
+  padding-inline: 18px;
+  justify-content: center;
+  gap: 7px;
+  font-size: 13px;
+  box-sizing: border-box;
+}
+:root .drafts-menu .drafts-bar > button.glass-btn:only-of-type { grid-column: 1 / -1; }
+:root .drafts-menu .drafts-bar > button.danger-text.glass-btn { color: var(--alert); }
+
+@media (max-width: 760px) {
+  :root .drafts-menu.liquid-popover { width: calc(100vw - 24px); padding: 16px; }
+  :root .drafts-menu .draft-card > .draft-card-open.glass-btn { padding: 14px 16px; }
+  :root .composer-footer > .composer-draft-actions { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}

@@ -1,0 +1,18 @@
+[data-liquid-button] {
+  --button-light-core: .52;
+  --button-light-edge: .12;
+  --button-light-rim: 180 180 180;
+}
+[data-liquid-button]:is(.primary, .home-primary, .home-chapter-link) {
+  --button-light-core: .2;
+  --button-light-edge: .07;
+  --button-light-rim: 230 230 230;
+}
+@media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+  [data-button-light-surface] {
+    background-image: var(--button-pointer-light), var(--button-light-base-image, none) !important;
+  }
+}
+@media (forced-colors: active) {
+  [data-button-light-surface] { background-image: var(--button-light-base-image, none) !important; }
+}

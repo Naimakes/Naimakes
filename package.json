@@ -1,0 +1,57 @@
+{
+  "name": "naimakes-forum",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "scripts": {
+    "dev": "node scripts/start-dev-servers.mjs",
+    "build": "tsc && vite build",
+    "start": "node --env-file-if-exists=.env server/api-server.mjs",
+    "backup": "node --env-file-if-exists=.env scripts/backup-data.mjs",
+    "import-data": "node scripts/import-data.mjs",
+    "create-site-owner": "node scripts/create-site-owner.mjs",
+    "set-admin-role": "node --env-file-if-exists=.env scripts/set-admin-role.mjs",
+    "check:deploy": "node --env-file-if-exists=.env scripts/check-deployment.mjs",
+    "package:release": "node --env-file-if-exists=.env scripts/package-release.mjs",
+    "build:fonts": "python3 scripts/build-font-faces.py"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.132.0",
+    "@fontsource-variable/newsreader": "^5.3.0",
+    "@fontsource-variable/noto-serif-sc": "^5.3.0",
+    "@kitlangton/rolling-number": "^0.4.1",
+    "@tiptap/extension-highlight": "^3.31.3",
+    "@tiptap/extension-image": "^3.31.3",
+    "@tiptap/extension-list": "^3.31.3",
+    "@tiptap/extension-subscript": "^3.31.3",
+    "@tiptap/extension-superscript": "^3.31.3",
+    "@tiptap/extension-table": "^3.31.3",
+    "@tiptap/extension-text-align": "^3.31.3",
+    "@tiptap/extension-text-style": "^3.31.3",
+    "@tiptap/extensions": "^3.31.3",
+    "@tiptap/pm": "^3.31.3",
+    "@tiptap/react": "^3.31.3",
+    "@tiptap/starter-kit": "^3.31.3",
+    "express": "^5.1.0",
+    "express-rate-limit": "^8.0.1",
+    "helmet": "^8.1.0",
+    "lucide-react": "^0.468.0",
+    "motion": "^12.23.0",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "react-markdown": "^10.1.0",
+    "remark-gfm": "^4.0.1",
+    "three": "^0.180.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.1.0",
+    "@types/react-dom": "^19.1.0",
+    "@types/three": "^0.180.0",
+    "@vitejs/plugin-react": "^4.5.0",
+    "typescript": "~5.8.3",
+    "vite": "^6.3.5"
+  }
+}

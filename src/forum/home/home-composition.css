@@ -1,0 +1,57 @@
+.home-page { background: var(--page); }
+.home-hero-pin { background: var(--page); }
+.home-intro.is-cinematic { height: 125svh; min-height: 820px; }
+.home-hero-type { top: 17%; max-width: 47%; }
+.home-hero-type h1 { font-weight: 550; letter-spacing: -.045em; margin-block: 29px 25px; }
+.home-hero-type h1 > span { background: none; color: var(--glass-text); }
+.home-hero-type > p { font-size: 15px; line-height: 2; max-width: 34ch; }
+.home-hero-actions { margin-top: 30px; gap: 14px; }
+.home-text-link { padding: 12px 20px; min-height: 46px; font-size: 13px; }
+.home-hero-bottom { padding-top: 20px; bottom: 28px; }
+.home-atom { right: -1%; width: 64%; }
+.atom-inspector { right: 7%; width: 218px; bottom: 17%; }
+.atom-inspector .atom-topic-details { border-radius: 23px; padding: 18px 20px; }
+.atom-topic-details small { font-size: 9px; letter-spacing: 1.5px; }
+.atom-topic-details p { font-size: 12px; line-height: 1.85; margin-top: 9px; }
+.atom-topic-details button.glass-btn { min-height: 40px; padding: 10px 14px; gap: 9px; font-size: 12px; margin-top: 14px; }
+.atom-stage .scene-controls { right: 7%; gap: 10px; }
+.atom-label .atom-label-button { padding: 10px 14px; gap: 9px; min-height: 40px; font-size: 11px; }
+.site-footer { margin-top: 40px; }
+.app-shell.is-home .site-footer { margin-top: 0; }
+@media(min-width:721px) and (max-width:1000px) {
+  .home-hero-type { max-width: 48%; }
+  .home-hero-type h1 { font-size: 40px; }
+  .home-hero-type > p { font-size: 14px; }
+  .home-atom { width: 67%; right: -10%; }
+  .atom-inspector { right: 15%; bottom: 14%; width: 200px; }
+  .home-hero-bottom { gap: 18px; }
+}
+@media(max-width:720px) {
+  .home-intro.is-cinematic { height: auto; min-height: 0; }
+  .home-hero-pin { height: auto; min-height: 0; padding: 30px 20px 25px; display: grid; grid-template-columns: minmax(0,1fr); gap: 25px; overflow: visible; }
+  .home-hero-type { position: relative; inset: auto; max-width: none; }
+  .home-hero-type h1 { font-size: clamp(34px,8.5vw,53px); margin: 22px 0 19px; }
+  .home-hero-type > p { font-size: 14px; line-height: 1.9; }
+  .home-hero-actions { flex-wrap: wrap; gap: 12px; margin-top: 24px; }
+  .home-hero-actions .button { padding-inline: 20px; }
+  .home-atom { position: relative; inset: auto; width: calc(100% + 24px); margin-inline: -12px; height: 490px; }
+  .atom-inspector { right: 4%; bottom: 2%; width: min(205px,57%); }
+  .atom-inspector .atom-topic-details { padding: 14px 16px; border-radius: 20px; }
+  .atom-topic-details p { font-size: 11px; }
+  .atom-topic-details button.glass-btn { font-size: 11px; min-height: 38px; margin-top: 10px; padding-inline: 12px; }
+  .atom-stage .scene-controls { right: auto; left: 5%; bottom: 2%; flex-wrap: wrap; gap: 8px; max-width: 100px; }
+  .atom-stage .scene-controls > span { flex-basis: 100%; font-size: 10px; }
+  .atom-stage .scene-controls button { width: 40px; height: 40px; min-width: 40px; min-height: 40px; }
+  .atom-label .atom-label-button { font-size: 10px; padding: 9px 12px; gap: 7px; }
+  .home-hero-bottom { position: relative; inset: auto; padding-top: 21px; width: 100%; margin-top: 0; }
+  .home-topic-tabs { width: 100%; }
+}
+@media(max-width:360px) {
+  .home-hero-pin { padding-inline: 16px; }
+  .home-atom { height: 465px; }
+  .home-hero-actions .button, .home-text-link { padding-inline: 17px; }
+}
+@media(prefers-reduced-motion:reduce) {
+  .home-intro.is-cinematic { height: auto; }
+  .home-hero-type { opacity: 1 !important; transform: none !important; }
+}

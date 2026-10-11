@@ -1,0 +1,56 @@
+services:
+  forum:
+    build: .
+    restart: unless-stopped
+    init: true
+    environment:
+      OWNER_BOOTSTRAP_FILE: /run/secrets/naimakes_owner
+      NODE_ENV: production
+      PORT: 3001
+      DATA_DIR: /app/data
+      APP_ORIGIN: ${APP_ORIGIN:?Set APP_ORIGIN in .env}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:?Set ADMIN_EMAIL in .env}
+      SEED_DEMO: ${SEED_DEMO:-false}
+      COOKIE_SECURE: ${COOKIE_SECURE:-true}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      ASSISTANT_MODEL: ${ASSISTANT_MODEL:-claude-opus-5-5}
+      ASSISTANT_EFFORT: ${ASSISTANT_EFFORT:-low}
+      ASSISTANT_RATE_LIMIT: ${ASSISTANT_RATE_LIMIT:-12}
+      ASSISTANT_DAILY_LIMIT: ${ASSISTANT_DAILY_LIMIT:-300}
+    volumes:
+      - forum_data:/app/data
+      - forum_backups:/app/backups
+    secrets:
+      - naimakes_owner
+    expose:
+      - "3001"
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    environment:
+      DOMAIN: ${DOMAIN:?Set DOMAIN in .env}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      forum:
+        condition: service_healthy
+volumes:
+  forum_data:
+  forum_backups:
+  caddy_data:
+  caddy_config:
+
+secrets:
+  naimakes_owner:
+    file: ./secrets/owner.json

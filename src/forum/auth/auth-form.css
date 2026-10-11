@@ -1,0 +1,27 @@
+.auth-mode-copy { display: grid; }
+.auth-mode-copy > div { grid-area: 1 / 1; min-width: 0; }
+.auth-mode-copy > [aria-hidden="true"] { pointer-events: none; }
+
+.auth-segments.auth-segments > [role="tab"] {
+  position: relative;
+  z-index: 1;
+  min-width: 0;
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+  color: var(--fluid-label);
+}
+.auth-segments.auth-segments > [role="tab"][data-fluid-active="true"] { color: var(--fluid-active); }
+.auth-segments.auth-segments > [role="tab"]:focus-visible { outline-offset: -2px; }
+
+.auth-panel { padding: 4px; }
+.auth-name-reveal { margin-inline: -5px; padding-inline: 5px; overflow: hidden; }
+.auth-name-reveal > label {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  padding-block: 0 20px;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.5;
+}

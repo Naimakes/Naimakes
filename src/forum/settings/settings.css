@@ -1,0 +1,235 @@
+.settings-page {
+  background: var(--page);
+  color: var(--text);
+  padding: 26px max(24px, calc((100vw - 1180px) / 2)) 90px;
+}
+.settings-page-head {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 26px;
+}
+.settings-page-head h1 {
+  margin: 8px 0 0;
+  font-size: clamp(28px, 4vw, 38px);
+  font-weight: 600;
+  line-height: 1.2;
+}
+.settings-page-head p {
+  max-width: 62ch;
+  margin: 0;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.7;
+}
+.settings-signin {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+}
+.settings-signin h2 { margin: 0; }
+
+
+.settings-nav {
+  position: sticky;
+  top: 96px;
+  z-index: 6;
+  display: flex;
+  justify-content: center;
+  margin-bottom: -6px;
+}
+.settings-nav-track {
+  position: relative;
+  display: flex;
+  gap: 4px;
+  max-width: 100%;
+  padding: 5px;
+  overflow-x: auto;
+  border: 1px solid var(--glass-border);
+  border-radius: 999px;
+  background: var(--glass-sheen), var(--glass-popup-bg);
+  box-shadow: var(--glass-rim), 0 10px 28px -16px rgb(0 0 0 / .35);
+  -webkit-backdrop-filter: var(--glass-panel-blur);
+  backdrop-filter: var(--glass-panel-blur);
+  scrollbar-width: none;
+}
+.settings-nav-track::-webkit-scrollbar { display: none; }
+.settings-nav-item {
+  position: relative;
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 38px;
+  padding: 8px 16px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--secondary);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.3;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: color .25s ease;
+}
+.settings-nav-item > svg,
+.settings-nav-item > span:not(.settings-nav-lens) {
+  position: relative;
+  z-index: 1;
+}
+.settings-nav-item:hover { color: var(--text); }
+.settings-nav-item.is-active { color: var(--glass-selection-text, #fff); }
+.settings-nav-item:focus-visible {
+  outline: 2px solid var(--glass-accent, #000);
+  outline-offset: -2px;
+}
+.settings-nav-lens {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  border-radius: inherit;
+  background: var(--glass-selection-bg, #000);
+  box-shadow: var(--glass-selection-shadow);
+}
+
+.settings-avatar-row {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  margin-top: 22px;
+  padding: 18px 20px;
+  border: 1px solid var(--glass-border);
+  border-radius: 22px;
+  background: var(--glass-sheen), var(--glass-bg);
+  box-shadow: var(--glass-control-shadow);
+}
+.settings-avatar-row + .settings-avatar-row { margin-top: 12px; }
+:root .settings-avatar.avatar {
+  flex: none;
+  width: 76px;
+  height: 76px;
+  font-size: 24px;
+  box-shadow: 0 0 0 3px rgb(var(--paper-lift-rgb) / .9), 0 8px 18px -10px rgb(0 0 0 / .45);
+}
+.settings-banner-thumb {
+  flex: none;
+  width: 76px;
+  height: 76px;
+  border-radius: 18px;
+  background: linear-gradient(140deg, #d9d5d0, #a9a5a0) center / cover no-repeat;
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / .5), 0 8px 18px -10px rgb(0 0 0 / .45);
+}
+.settings-avatar-text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.settings-avatar-text strong {
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+.settings-avatar-text small {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.55;
+}
+.settings-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 10px;
+}
+:root .settings-section .settings-actions .button,
+:root .settings-section .settings-form-foot .button,
+:root .settings-account .settings-actions .button {
+  min-height: 42px;
+  padding: 9px 18px;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.settings-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px 22px;
+  margin-top: 24px;
+}
+.settings-form > label {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  min-width: 0;
+  font-size: 13.5px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+.settings-form-wide { grid-column: 1 / -1; }
+:root .settings-form textarea { min-height: 96px; font-weight: 400; }
+:root .settings-form input { font-weight: 400; }
+.settings-counter {
+  position: absolute;
+  right: 18px;
+  bottom: 10px;
+  color: var(--muted);
+  font-size: 11.5px;
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+}
+.settings-form .form-error { margin: 0; }
+.settings-form-foot {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding-top: 4px;
+}
+
+.settings-account .settings-actions { margin-top: 18px; }
+.settings-account-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 0;
+  border-bottom: 1px solid var(--border);
+}
+.settings-account-row:last-child { border-bottom: 0; padding-bottom: 0; }
+.settings-account-row > span {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+.settings-account-row strong { font-size: 13.5px; font-weight: 500; }
+.settings-account-row small { color: var(--muted); font-size: 11.5px; line-height: 1.5; }
+.settings-account-row .button { flex: none; }
+.settings-account > .settings-account-row:first-of-type { margin-top: 10px; }
+
+.profile-banner-edit-profile { gap: 6px; }
+
+@media (max-width: 900px) {
+  .settings-nav { top: 78px; }
+}
+@media (max-width: 720px) {
+  .settings-page { padding: 18px 14px 70px; }
+  .settings-nav { top: 72px; margin-inline: -4px; }
+  .settings-nav-item { min-height: 40px; padding: 8px 14px; }
+  .settings-form { grid-template-columns: minmax(0, 1fr); gap: 16px; }
+  .settings-avatar-row { align-items: flex-start; gap: 16px; padding: 16px; }
+  :root .settings-avatar.avatar,
+  .settings-banner-thumb { width: 60px; height: 60px; }
+  .settings-form-foot { justify-content: stretch; }
+  .settings-form-foot .button { flex: 1; justify-content: center; }
+  .settings-signin { flex-direction: column; align-items: stretch; }
+  .settings-account-row { flex-direction: column; align-items: stretch; }
+  .settings-account-row .button { justify-content: center; }
+}

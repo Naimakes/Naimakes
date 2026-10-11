@@ -1,0 +1,599 @@
+:root { --control-h: 44px; --control-h-sm: 36px; }
+
+:root .library-toolbar :is(.glass-select-trigger, .library-search, .button, .glass-btn.button) {
+  height: var(--control-h);
+  min-height: var(--control-h);
+  box-sizing: border-box;
+}
+:root .library-toolbar .library-search { padding-block: 0; }
+:root .library-search:focus-within { outline: none; }
+:root .library-filter-row > .more-filters,
+:root .library-filter-row > button.glass-btn:not(.glass-segment) { height: var(--control-h); min-height: var(--control-h); }
+:root .library-filter-row > .fluid-tabs.glass-segments > button.glass-segment { min-height: 34px; }
+:root .history-toolbar > button.glass-btn { height: var(--control-h); min-height: var(--control-h); box-sizing: border-box; }
+
+:root :is(.library-batch-bar, .gov-batch-bar) :is(.glass-select-trigger, button.glass-btn) {
+  height: var(--control-h); min-height: var(--control-h); box-sizing: border-box;
+}
+
+:root .search-page-toolbar .fluid-tabs.fluid-tabs.glass-segments > button.glass-segment { min-height: 34px; }
+
+:root .topic-card-footer > .subscribe-bell.topic-card-bell.glass-btn {
+  width: var(--control-h-sm); height: var(--control-h-sm);
+  min-width: var(--control-h-sm); min-height: var(--control-h-sm);
+}
+:root .community-section .topic-card-footer > button.button.glass-btn,
+:root .topic-card-footer > button.button.glass-btn { height: var(--control-h-sm); min-height: var(--control-h-sm); padding-block: 0; }
+
+:root .collection-header-actions { display: flex; flex-wrap: nowrap; gap: 10px; }
+:root .collection-header-actions > button.icon-button.glass-btn {
+  width: var(--control-h); height: var(--control-h);
+  min-width: var(--control-h); min-height: var(--control-h);
+  padding: 0; border-radius: 50%;
+}
+
+:root .detail-action-bar {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 10px;
+}
+:root .detail-action-bar > button.glass-btn,
+:root .detail-action-bar > .detail-action-extra > button.glass-btn,
+:root .detail-action-bar > .detail-action-extra > .more-menu-wrap > button.glass-btn {
+  width: var(--control-h); height: var(--control-h);
+  min-width: var(--control-h); min-height: var(--control-h);
+  padding: 0; border-radius: 50%; justify-content: center;
+}
+:root .detail-action-bar > button.detail-like-button.glass-btn { width: auto; padding: 0 16px 0 14px; gap: 8px; border-radius: 999px; }
+:root .detail-action-bar > .detail-action-extra { display: flex; gap: 10px; margin-left: auto; }
+:root .detail-action-bar > button.icon-button.active.glass-btn {
+  color: var(--glass-selection-text); background: var(--glass-selection-bg);
+  border-color: rgb(0 0 0 / .9); box-shadow: var(--glass-selection-shadow);
+}
+
+@container detail (max-width: 480px) {
+  :root .detail-action-bar, :root .detail-action-bar > .detail-action-extra { gap: 6px; }
+  :root .detail-action-bar > button.glass-btn,
+  :root .detail-action-bar > .detail-action-extra > button.glass-btn,
+  :root .detail-action-bar > .detail-action-extra > .more-menu-wrap > button.glass-btn { width: 40px; height: 40px; min-width: 40px; min-height: 40px; }
+  :root .detail-action-bar > button.detail-like-button.glass-btn { width: auto; padding: 0 13px 0 12px; gap: 6px; }
+}
+
+:root .profile-avatar-edit > div {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(128px, max-content));
+  grid-auto-rows: var(--control-h);
+  align-items: center;
+  gap: 10px;
+}
+:root .profile-avatar-edit > div > button.glass-btn { width: 100%; justify-content: center; white-space: nowrap; }
+
+:root :is(.app-shell, .liquid-dialog, body) input[type="checkbox"]:not([role="switch"]) {
+  -webkit-appearance: none;
+  appearance: none;
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 18px;
+  height: 18px;
+  min-width: 18px;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  border-radius: 50%;
+  border: 1px solid rgb(0 0 0 / .16);
+  background: linear-gradient(145deg, var(--paper-peak), rgb(var(--paper-lift-rgb) / .82));
+  box-shadow: inset 1px 1px 1px #fff, inset -1px -1px 1px rgb(255 255 255 / .7), inset 0 -1px 2px rgb(0 0 0 / .08), 0 1px 3px -1px rgb(0 0 0 / .22);
+  cursor: pointer;
+  vertical-align: middle;
+  transition: border-color .18s ease, box-shadow .18s ease;
+}
+:root :is(.app-shell, .liquid-dialog, body) input[type="checkbox"]:not([role="switch"]):checked { border-color: rgb(0 0 0 / .28); }
+:root :is(.app-shell, .liquid-dialog, body) input[type="checkbox"]:not([role="switch"]):checked::after {
+  content: "";
+  width: 4px;
+  height: 8px;
+  margin-top: -2px;
+  border: solid #111;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+:root :is(.app-shell, .liquid-dialog, body) input[type="checkbox"]:not([role="switch"]):focus-visible { outline: 2px solid color-mix(in srgb, var(--glass-accent, #000) 40%, transparent); outline-offset: 2px; }
+:root :is(.app-shell, .liquid-dialog, body) input[type="checkbox"]:not([role="switch"]):disabled { cursor: default; opacity: .55; }
+:root :is(.rt-surface, .rich-content) li:is([data-type="taskItem"], .rt-task) input[type="checkbox"]:checked { background: linear-gradient(145deg, var(--paper-peak), rgb(var(--paper-lift-rgb) / .82)); border-color: rgb(0 0 0 / .28); }
+:root :is(.rt-surface, .rich-content) li:is([data-type="taskItem"], .rt-task) input[type="checkbox"]:checked::after { border-color: #111; }
+
+:root .rt-shell .rt-toolbar-wrap { background: transparent; -webkit-backdrop-filter: none; backdrop-filter: none; }
+:root .rt-shell .rt-toolbar {
+  background: var(--glass-sheen), rgb(var(--paper-lift-rgb) / .92);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-control-shadow);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+}
+@media (max-width: 760px) {
+  :root .rt-shell .rt-toolbar-wrap:has(.rt-panel) { position: relative; top: auto; }
+}
+:root .rt-shell button.rt-tool.rt-select.glass-btn[data-liquid-button],
+:root .rt-shell button.rt-tool.rt-select.glass-btn[data-liquid-button]:not(:disabled):is(.is-active, .is-open, :hover) {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+}
+
+.search-page-tabs { padding: 20px 20px 18px; margin: -20px -20px 0; }
+.search-page-sorts { padding: 20px; margin: -20px; }
+.library-post-wrap { overflow: visible; }
+
+:root :is(.community-section, .search-page, .profile-page, .library-layout) .post-author-actions > .icon-button.glass-btn,
+:root .post-author-actions > .icon-button.glass-btn {
+  width: 34px; height: 34px; min-width: 34px; min-height: 34px; padding: 0;
+}
+
+@media (max-width: 480px) {
+  :root :is(.app-shell, .liquid-dialog) :is(.profile-search, .library-search, .admin-search, .search-page-form) {
+    max-width: 88%;
+    margin-inline: auto;
+  }
+}
+
+:root :is(.community-section, .search-page, .profile-page, .library-layout, .detail-modal) .post-tags > button.glass-btn {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--control-h-sm);
+  padding: 0 14px;
+  border-radius: 999px;
+  color: var(--glass-text);
+  background: var(--glass-sheen), var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-control-shadow);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  font-size: 12px;
+}
+:root .text-disclosure-toggle {
+  min-height: 34px;
+  padding: 0 14px;
+  border-radius: 999px;
+  color: var(--glass-text);
+  background: var(--glass-sheen), var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-control-shadow);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+}
+:root .sidebar-topic > button.topic-follow.glass-btn { border-radius: 50%; }
+
+:root :is(.community-section, .search-page, .profile-page, .library-layout, .app-shell) button.glass-btn.category-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: var(--control-h-sm);
+  padding: 0 14px 0 12px;
+  border-radius: 999px;
+  color: var(--glass-text);
+  font-size: 12px;
+  background: var(--glass-sheen), rgb(var(--paper-lift-rgb) / .92);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-control-shadow);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+}
+:root :is(.community-section, .search-page, .profile-page, .library-layout, .app-shell) button.glass-btn.category-label > svg { width: 14px; height: 14px; flex: none; }
+:root .post-card.is-announcement button.glass-btn.category-label { color: var(--announce, #8a5a1f); }
+@media (hover: hover) and (pointer: fine) {
+  :root :is(.community-section, .search-page, .profile-page, .library-layout, .app-shell) button.glass-btn.category-label:not(:disabled):hover { background: var(--glass-sheen), var(--paper-peak); color: #000; }
+}
+
+:root .reply-form .attachment-picker-row { flex-wrap: nowrap; gap: 10px; }
+:root .reply-form .attachment-picker-row > .attachment-picker-end { display: flex; align-items: center; gap: 10px; margin-left: auto; flex: none; }
+:root .reply-form .attachment-picker-row :is(.text-button, .button).glass-btn { box-sizing: border-box; height: 40px; min-height: 40px; padding-block: 0; white-space: nowrap; }
+:root .reply-form .attachment-picker-row > .attachment-picker-end > .button.glass-btn { padding-inline: 18px; }
+@media (max-width: 480px) {
+  :root .reply-form .attachment-picker-row { gap: 8px; }
+  :root .reply-form .attachment-picker-row > .attachment-picker-end { gap: 8px; }
+  :root .reply-form .attachment-picker-row :is(.text-button, .button).glass-btn { padding-inline: 12px; gap: 6px; }
+  :root .reply-form .attachment-picker-row > .attachment-picker-end > .button.glass-btn { padding-inline: 14px; }
+}
+@media (max-width: 480px) {
+  :root .reply-form.nested .attachment-picker-row > .text-button.glass-btn { width: 40px; min-width: 40px; padding-inline: 0; gap: 0; }
+  :root .reply-form.nested .attachment-picker-row > .text-button.glass-btn > .tool-label { display: none; }
+}
+
+:root .text-button.glass-btn:not(.glass-menu-item):not(.attachment-manage):not(:is(.glass-actions, .glass-segments, .fluid-tabs, .glass-menu, .rt-toolbar) *) {
+  min-height: var(--control-h-sm);
+  padding-inline: 14px;
+  border-radius: 999px;
+  background: var(--glass-sheen), rgb(var(--paper-lift-rgb) / .92);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-control-shadow);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+}
+@media (hover: hover) and (pointer: fine) {
+  :root .text-button.glass-btn:not(.glass-menu-item):not(.attachment-manage):not(:disabled):not(:is(.glass-actions, .glass-segments, .fluid-tabs, .glass-menu, .rt-toolbar) *):hover { background: var(--glass-sheen), var(--paper-peak); }
+}
+
+:root .profile-page button.glass-btn.profile-bio-edit {
+  min-height: var(--control-h-sm);
+  margin: 6px 0;
+  padding: 8px 16px 8px 14px;
+  border-radius: 20px;
+  color: var(--glass-text);
+  text-shadow: none;
+  text-align: left;
+  background: var(--glass-sheen), rgb(var(--paper-lift-rgb) / .92);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-control-shadow);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+}
+@media (hover: hover) and (pointer: fine) {
+  :root .profile-page button.glass-btn.profile-bio-edit:not(:disabled):hover { background: var(--glass-sheen), var(--paper-peak); color: #000; }
+}
+
+:root .site-footer .footer-bottom > .footer-links { gap: 10px; }
+:root .site-footer .footer-bottom .footer-text-link {
+  min-height: var(--control-h-sm);
+  padding: 0 16px;
+  border-radius: 999px;
+  color: var(--glass-text);
+  text-decoration: none;
+  text-shadow: none;
+  background: var(--glass-sheen), rgb(var(--paper-lift-rgb) / .92);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-control-shadow);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+}
+@media (hover: hover) and (pointer: fine) {
+  :root .site-footer .footer-bottom .footer-text-link:is(:hover, :focus-visible) { background: var(--glass-sheen), var(--paper-peak); color: #000; text-decoration: none; text-shadow: none; }
+}
+
+:root .profile-page .profile-card {
+  background: var(--glass-plate);
+  border: 1px solid var(--glass-plate-edge);
+  box-shadow: var(--glass-plate-shadow);
+  -webkit-backdrop-filter: var(--glass-panel-blur);
+  backdrop-filter: var(--glass-panel-blur);
+}
+:root .profile-page :is(.profile-like-item, .profile-person, .profile-collection, .profile-setting, .profile-module) {
+  border: 1px solid rgb(255 255 255 / .95);
+  border-radius: var(--cover-radius, 26px);
+  background: var(--glass-sheen), rgb(var(--paper-lift-rgb) / .96);
+  box-shadow: var(--glass-rim), 0 0 0 .5px rgb(0 0 0 / .1), 0 2px 4px -2px rgb(0 0 0 / .12), 0 8px 18px -10px rgb(0 0 0 / .26), 0 22px 40px -24px rgb(0 0 0 / .32);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+}
+:root .profile-page .profile-likes .profile-like-list {
+  margin-top: 18px;
+  padding: 0;
+  gap: 16px;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+}
+:root .profile-page .profile-like-item { padding: 16px 20px; }
+:root .profile-page .profile-person-list { gap: 16px 22px; }
+:root .profile-page .profile-person { padding: 14px 18px; border-bottom: 0; }
+:root .profile-page .profile-setting { padding: 15px 20px; border-bottom: 0; }
+:root .profile-page .profile-collection { padding: 18px 20px; }
+:root .profile-page .profile-module {
+  min-height: 60px;
+  padding: 7px 8px 7px 26px;
+  border-radius: 999px;
+}
+:root .profile-page :is(.profile-tag, .profile-board) {
+  color: var(--glass-text);
+  background: var(--glass-sheen), rgb(var(--paper-lift-rgb) / .96);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-control-shadow);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+}
+@media (max-width: 600px) {
+  :root .profile-page .profile-likes .profile-like-list { gap: 12px; }
+  :root .profile-page .profile-like-item { padding: 14px 16px; }
+}
+
+:root .glass-select-popup.liquid-popover { padding: 8px; }
+:root .glass-select-popup .glass-select-option {
+  position: relative;
+  z-index: 0;
+  min-height: 46px;
+  padding: 12px 18px;
+  gap: 12px;
+  font-size: 14px;
+  color: var(--glass-text);
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+}
+:root .glass-select-popup .glass-select-option::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  opacity: 0;
+  pointer-events: none;
+  background: linear-gradient(142deg, var(--select-body), var(--select-tint));
+  box-shadow: inset 0 1px 0 var(--select-sheen), inset 0 0 0 1px var(--select-edge), 0 8px 16px -13px var(--select-cast);
+  transition: opacity var(--motion-interface);
+}
+:root .glass-select-popup .glass-select-option:is([aria-selected="true"], [data-active="true"]:not(:disabled))::before { opacity: 1; }
+:root .glass-select-popup .glass-select-option:is([aria-selected="true"], [data-active="true"]:not(:disabled)) { color: var(--select-text); }
+:root .glass-select-popup .glass-select-option:is([aria-selected="true"], [data-active="true"]:not(:disabled)) :is(span, svg) { color: inherit; }
+:root .glass-select-list:has(.glass-select-option[data-active="true"]) .glass-select-option[aria-selected="true"]:not([data-active="true"])::before { opacity: 0; }
+:root .glass-select-list:has(.glass-select-option[data-active="true"]) .glass-select-option[aria-selected="true"]:not([data-active="true"]),
+:root .glass-select-list:has(.glass-select-option[data-active="true"]) .glass-select-option[aria-selected="true"]:not([data-active="true"]) :is(span, svg) { color: var(--glass-text); }
+
+:root :is(
+  .liquid-menu-item > button,
+  .profile-dropdown.liquid-popover .liquid-menu-item > button,
+  .profile-dropdown > button,
+  .glass-select-popup .glass-select-option,
+  .mobile-nav button,
+  .category-filters button,
+  .filter-options button,
+  .library-filter-row > button,
+  .search-tags > button,
+  .comment-vote,
+  .profile-board,
+  .profile-reset,
+  .profile-stat.is-clickable,
+  .topic-card-footer button,
+  .segmented > button,
+  .palette-result,
+  .folder-picker > label
+) {
+  border-radius: 999px;
+}
+:root .liquid-popover .liquid-menu-item > button { padding-inline: 18px; }
+:root .palette-result { padding-inline: 24px; }
+:root .folder-picker > label { padding-inline: 20px; }
+:root .profile-reset { padding-inline: 18px; }
+:root .profile-dropdown > button { padding-inline: 18px; }
+:root .search-tags > button { padding-inline: 14px; }
+:root .liquid-popover .liquid-menu-item:has(> .menu-group-start) { padding-top: 7px; margin-top: 7px; }
+
+@media (max-width: 760px) {
+  :root .library-layout .library-nav-item.active {
+    color: var(--glass-text);
+    background: var(--glass-sheen), var(--glass-card-bg);
+    border-color: var(--glass-border);
+    box-shadow: var(--glass-control-shadow);
+  }
+  :root .library-layout .library-nav-item.active > svg,
+  :root .library-layout .library-nav-item.active > .track-hash { color: var(--muted); }
+  :root .library-layout .library-nav-item.active > small { color: var(--secondary); opacity: 1; }
+}
+
+@media (max-width: 600px) {
+  :root .profile-avatar-edit > div {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 8px;
+  }
+  :root .profile-avatar-edit > div > button.glass-btn {
+    flex: 1 1 0;
+    min-width: 0;
+    padding-inline: 11px;
+    gap: 6px;
+  }
+}
+
+@media (max-width: 760px) {
+  :root .post-footer { flex-wrap: nowrap; align-items: center; gap: 10px; }
+  :root .post-footer > .post-stats {
+    width: auto;
+    margin-left: auto;
+    flex-wrap: nowrap;
+    justify-content: flex-end;
+  }
+  :root .post-footer > .post-stats > .read-later-button { display: none; }
+}
+
+@media (max-width: 760px) {
+  :root .scoped-search + .library-layout .library-toolbar > .library-search { display: none; }
+  :root .community-section .library-section-heading { border-bottom: 0; padding-bottom: 0; }
+  :root .scoped-search + .library-layout .library-toolbar {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas: "sort batch";
+    align-items: center;
+    gap: 9px;
+  }
+  :root .scoped-search + .library-layout .library-toolbar > .library-sort { grid-area: sort; min-width: 0; }
+  :root .scoped-search + .library-layout .library-toolbar > .library-sort .glass-select { width: 100%; }
+  :root .scoped-search + .library-layout .library-toolbar > .button.compact { grid-area: batch; width: auto; padding-inline: 13px; }
+  :root .scoped-search + .library-layout .library-toolbar :is(.glass-select-trigger, .button, .glass-btn.button) {
+    min-height: 40px;
+    height: 40px;
+    font-size: 12.5px;
+  }
+}
+
+@media (max-width: 760px) {
+  :root .scoped-search .search-page-form {
+    max-width: 100%;
+    margin-inline: 0;
+    gap: 8px;
+    padding: 5px 5px 5px 14px;
+  }
+  :root .scoped-search .search-page-form > input { min-width: 0; }
+  :root .scoped-search .search-page-form .search-page-submit {
+    min-height: 38px;
+    height: 38px;
+    padding-inline: 13px;
+    font-size: 12px;
+    gap: 5px;
+  }
+}
+
+@media (max-width: 600px) {
+  :root .profile-page .profile-bar { gap: 10px; }
+  :root .profile-page .profile-bar-end {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+    width: 100%;
+  }
+  :root .profile-page .profile-search {
+    width: 100%;
+    max-width: 100%;
+    margin: 0;
+    min-height: 42px;
+    height: 42px;
+  }
+  :root .profile-page .profile-tabs.profile-nav-tabs.fluid-tabs { width: 100%; padding: 3px; }
+  :root .profile-page .profile-tabs > button { padding: 7px 8px; min-height: 38px; }
+  :root .profile-page .profile-bar-end .profile-stats {
+    width: 100%;
+    padding: 4px;
+    gap: 2px;
+  }
+  :root .profile-page .profile-stats .profile-stat,
+  :root .profile-page .profile-stats .profile-stat.glass-btn { height: 36px; min-height: 36px; gap: 0; }
+  :root .profile-page .profile-stats .profile-stat > strong { font-size: 14px; line-height: 1.25; }
+  :root .profile-page .profile-stats .profile-stat > small { font-size: 10.5px; line-height: 1.2; }
+}
+
+@media (max-width: 760px) {
+  :root .composer-card > h3 {
+    margin: 0 0 12px;
+    font-size: 17px;
+  }
+}
+
+@media (max-width: 760px) {
+  :root .community-section .board-bar button.board-bar-toggle.glass-btn,
+  :root .board-bar button.board-bar-toggle.glass-btn {
+    width: 38px;
+    min-width: 38px;
+    height: 38px;
+    min-height: 38px;
+    border-radius: 50%;
+  }
+}
+
+:root .profile-page .profile-tag-input {
+  height: 52px;
+  padding: 0 7px 0 18px;
+  gap: 10px;
+  border-radius: 999px;
+  color: var(--glass-text);
+  background: var(--glass-sheen), rgb(var(--paper-lift-rgb) / .96);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-control-shadow);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+}
+:root .profile-page .profile-tag-input:focus-within {
+  box-shadow: var(--glass-rim), 0 0 0 2px rgb(0 0 0 / .75);
+}
+:root .profile-page .profile-tag-input > svg { color: var(--secondary); }
+:root .profile-page .profile-tag-input > button.glass-btn {
+  width: 38px;
+  min-width: 38px;
+  height: 38px;
+  min-height: 38px;
+  padding: 0;
+  border-radius: 50%;
+  color: var(--glass-text);
+  background: var(--glass-sheen), rgb(var(--paper-lift-rgb) / .92);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-control-shadow);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+}
+@media (hover: hover) and (pointer: fine) {
+  :root .profile-page .profile-tag-input > button.glass-btn:hover {
+    color: #000;
+    background: var(--glass-sheen), var(--paper-peak);
+  }
+}
+
+@media (min-width: 601px) {
+  :root .library-layout .library-sidebar :is(.library-nav-item, .library-nav-create).glass-btn {
+    box-sizing: border-box;
+    min-height: 46px;
+    height: 46px;
+    padding: 0 14px;
+    font-size: 13px;
+    border-radius: 999px;
+    color: var(--glass-text);
+    background: var(--glass-sheen), var(--glass-card-bg);
+    border: 1px solid var(--glass-border);
+    box-shadow: var(--glass-control-shadow);
+    -webkit-backdrop-filter: var(--glass-blur);
+    backdrop-filter: var(--glass-blur);
+  }
+  :root .library-layout .library-sidebar .library-nav-create.glass-btn > svg:last-child:not(:first-child) { margin-left: auto; }
+  :root .library-layout .library-sidebar :is(.library-nav-item, .library-nav-create).glass-btn:focus-visible {
+    outline: none;
+    box-shadow: var(--glass-control-shadow), 0 0 0 2px rgb(255 255 255 / .95), 0 0 0 3px rgb(0 0 0 / .18);
+  }
+}
+
+@media (min-width: 761px) {
+  :root .library-layout .library-sidebar .library-nav-item.active.glass-btn {
+    color: #fff;
+    background: #0b0b0b;
+    border-color: #0b0b0b;
+  }
+  :root .library-layout .library-sidebar .library-nav-item.active.glass-btn > svg,
+  :root .library-layout .library-sidebar .library-nav-item.active.glass-btn > .track-hash { color: #fff; }
+}
+
+@media (min-width: 901px) {
+  :root .profile-page .profile-bar {
+    --profile-bar-control: 56px;
+    align-items: center;
+  }
+  :root .profile-page .profile-bar > .profile-tabs.profile-nav-tabs.fluid-tabs,
+  :root .profile-page .profile-bar .profile-search,
+  :root .profile-page .profile-bar .profile-stats {
+    box-sizing: border-box;
+    height: var(--profile-bar-control);
+    min-height: var(--profile-bar-control);
+  }
+  :root .profile-page .profile-bar .profile-tabs.profile-nav-tabs > button {
+    padding-block: 0;
+    min-height: 46px;
+  }
+  :root .profile-page .profile-bar .profile-search { padding-inline: 18px 7px; }
+  :root .profile-page .profile-bar .profile-stats { padding: 5px; }
+  :root .profile-page .profile-bar .profile-stats .profile-stat,
+  :root .profile-page .profile-bar .profile-stats .profile-stat.glass-btn {
+    height: 44px;
+    min-height: 44px;
+  }
+}
+
+/* The clear (X) button is exactly as tall as the 搜索 button beside it. */
+:root .search-page-form { --search-action-h: 52px; }
+:root .scoped-search .search-page-form { --search-action-h: 46px; }
+@media (max-width: 760px) {
+  :root .scoped-search .search-page-form { --search-action-h: 38px; }
+}
+:root :is(.app-shell, .liquid-dialog) .search-page-form > button.search-page-clear.glass-btn[data-liquid-button] {
+  flex: none;
+  align-self: center;
+  width: var(--search-action-h);
+  height: var(--search-action-h);
+  min-width: var(--search-action-h);
+  min-height: var(--search-action-h);
+  padding: 0;
+  border-radius: 50%;
+}
+:root .search-page-form > .search-page-clear svg {
+  width: calc(var(--search-action-h) * .4);
+  height: calc(var(--search-action-h) * .4);
+}
