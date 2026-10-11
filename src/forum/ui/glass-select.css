@@ -1,0 +1,49 @@
+.glass-select { display: inline-block; position: relative; vertical-align: middle; width: 100%; min-width: 0; }
+.glass-select > select.glass-select-native {
+  position: absolute !important; top: 0; left: 0; width: 1px !important; height: 1px !important;
+  min-height: 0 !important; margin: 0 !important; padding: 0 !important; border: 0 !important;
+  opacity: 0 !important; clip-path: inset(50%); overflow: hidden; pointer-events: none;
+}
+.glass-select > .glass-select-trigger {
+  display: flex; align-items: center; justify-content: space-between; gap: 18px;
+  width: 100%; min-width: 0; min-height: 46px; padding: 11px 15px; margin: 0;
+  border-radius: 18px; color: var(--glass-text); text-align: left; font-size: 14px;
+  line-height: 1.5; font-weight: 500; background: var(--glass-field-bg, var(--glass-bg));
+}
+.glass-select-value { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.glass-select-trigger > svg { flex-shrink: 0; color: var(--muted); transition: rotate .2s ease; }
+.glass-select-trigger[aria-expanded="true"] > svg { rotate: 180deg; }
+.glass-select-popup.liquid-popover {
+  position: fixed; inset: auto; margin: 0; padding: 8px; overflow: auto;
+  z-index: 150; box-sizing: border-box; overscroll-behavior: contain;
+  border-radius: 24px; color: var(--glass-text);
+  background: var(--glass-popup-bg, color-mix(in srgb, var(--glass-bg) 90%, var(--surface) 10%));
+  border: 1px solid var(--glass-border);
+  -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur);
+  box-shadow: inset 0 1px 0 var(--glass-highlight), var(--glass-shadow);
+}
+.glass-select-popup .glass-select-list { display: block; }
+.glass-select-popup .glass-select-option {
+  display: flex; align-items: center; justify-content: space-between; gap: 18px; width: 100%; min-height: 44px;
+  border: 0; border-radius: 14px; padding: 11px 12px; margin: 0; color: inherit;
+  background: transparent; box-shadow: none; text-align: left; font-size: 14px; line-height: 1.5;
+  cursor: pointer; transition: background-color .12s ease, color .12s ease;
+}
+.glass-select-popup .glass-select-option > span { overflow-wrap: anywhere; }
+.glass-select-popup .glass-select-option[data-active="true"] { background: var(--soft); }
+.glass-select-popup .glass-select-option[aria-selected="true"] { color: var(--glass-accent, #2c2c2e); }
+.glass-select-popup .glass-select-option:disabled { opacity: .42; cursor: default; }
+.glass-select-check { flex-shrink: 0; opacity: 0; }
+.glass-select-option[aria-selected="true"] .glass-select-check { opacity: 1; }
+.glass-select-group { padding: 9px 12px 5px; font-size: 11px; color: var(--muted); }
+.glass-select-error { display: block; margin-top: 6px; color: var(--alert); font-size: 12px; line-height: 1.5; }
+.glass-select-trigger[aria-invalid="true"] { border-color: var(--alert); }
+.library-batch-bar .glass-select { width: min(220px, 100%); }
+@media (max-width: 600px) { .glass-select > .glass-select-trigger, .glass-select-popup .glass-select-option { font-size: 16px; } }
+@media (forced-colors: active) {
+  .glass-select-popup.liquid-popover { background: Canvas; color: CanvasText; border: 1px solid CanvasText; }
+  .glass-select-popup .glass-select-option[data-active="true"] { background: Highlight; color: HighlightText; }
+}
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .glass-select-popup.liquid-popover { background: var(--surface); }
+}

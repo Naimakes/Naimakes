@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#ffffff" />
+    <meta name="robots" content="noindex" />
+    <meta
+      name="description"
+      content="Naimakes 论坛 — 思想，先于未来。一道阵列，一列一个板块，格子里是按时间排好的帖子。"
+    />
+    <title>Naimakes · 帖子阵列</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  </head>
+  <body>
+    <main id="viewport"><div id="stage"></div></main>
+    <script type="module">
+      import { loadArchive } from "/src/landing/data/load-forum-posts.ts";
+      (async () => {
+        window.__NAIMAKES_ARCHIVE__ = await loadArchive();
+        await import("/src/landing/main.ts");
+        if (window.parent !== window)
+          window.parent.postMessage({ type: "naimakes-landing-ready" }, location.origin);
+      })();
+    </script>
+  </body>
+</html>

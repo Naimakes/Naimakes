@@ -1,0 +1,160 @@
+.board-bar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  column-gap: 12px;
+  margin: 2px 0 22px;
+}
+.board-bar:not([data-foldable]) { grid-template-columns: minmax(0, 1fr); }
+.board-bar-main { position: relative; min-width: 0; }
+
+.board-bar-plate {
+  box-sizing: content-box;
+  padding: 6px 8px 16px;
+  margin: -6px -8px -16px;
+}
+.board-bar-plate-inner { display: block; }
+.fluid-tabs.fluid-tabs.glass-segments.board-segs {
+  width: 100%;
+  box-sizing: border-box;
+  transition: border-radius .32s cubic-bezier(.22, .8, .25, 1);
+}
+.fluid-tabs.fluid-tabs.glass-segments.board-segs[data-fluid-rows="single"] { border-radius: 999px; }
+.fluid-tabs.fluid-tabs.glass-segments.board-segs[data-fluid-rows="multi"] { border-radius: 26px; row-gap: 4px; }
+.fluid-tabs.fluid-tabs.glass-segments.board-segs > button.glass-segment { padding-inline: 12px; }
+.fluid-tabs.fluid-tabs.glass-segments.board-segs > button.glass-segment > svg { flex-shrink: 0; opacity: .6; }
+
+.board-bar button.board-bar-toggle.glass-btn {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  min-width: 48px;
+  min-height: 48px;
+  padding: 0;
+  border-radius: 50%;
+  color: var(--glass-text);
+}
+.board-bar button.board-bar-toggle.glass-btn > svg { transition: rotate .32s cubic-bezier(.22, .8, .25, 1); }
+.board-bar.is-expanded button.board-bar-toggle.glass-btn > svg { rotate: 180deg; }
+
+.board-bar-footer { margin-inline: -8px; padding-inline: 8px; }
+.board-bar-footer-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 0 8px;
+}
+.board-bar button.board-bar-chip.glass-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 36px;
+  padding: 6px 16px;
+  border-radius: 999px;
+  font-size: 12.5px;
+  font-weight: 550;
+  color: var(--glass-text);
+  white-space: nowrap;
+}
+.board-bar button.board-bar-chip.glass-btn > em {
+  display: inline-grid;
+  place-items: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 650;
+  color: var(--glass-text);
+  background: rgb(0 0 0 / .06);
+}
+.board-bar button.board-bar-chip.glass-btn.is-active { color: #000; font-weight: 650; }
+.board-bar button.board-bar-chip.glass-btn[aria-expanded="true"] > .board-bar-chip-caret { rotate: 180deg; }
+.board-bar-chip-caret { transition: rotate .24s ease; }
+.board-bar-hint { padding-left: 16px; font-size: 12px; color: var(--muted, #8a8a8a); }
+
+.context-menu.board-hidden-menu { min-width: 200px; max-height: min(360px, 60vh); overflow-y: auto; }
+.board-hidden-note { margin: 2px 10px 8px; font-size: 11.5px; color: var(--secondary); }
+.context-menu.board-hidden-menu button.is-current { font-weight: 650; color: #000; }
+
+.board-arrange-modal { width: min(520px, calc(100vw - 32px)); }
+.board-arrange-note { margin: 0 0 16px; font-size: 13px; line-height: 1.7; color: var(--secondary); }
+.board-arrange-list {
+  display: grid;
+  gap: 8px;
+  max-height: min(56vh, 520px);
+  margin: 0 -8px;
+  padding: 4px 8px 12px;
+  overflow-y: auto;
+  list-style: none;
+}
+.board-arrange-row {
+  position: relative;
+  display: grid;
+  grid-template-columns: 24px 34px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  min-height: 56px;
+  padding: 8px 10px 8px 12px;
+  border-radius: 999px;
+  background: linear-gradient(170deg, rgb(var(--paper-lift-rgb) / .98), rgb(var(--paper-lift-rgb) / .86));
+  border: 1px solid rgb(255 255 255 / .96);
+  box-shadow: var(--glass-control-shadow);
+  user-select: none;
+}
+.board-arrange-row.is-off .board-arrange-name,
+.board-arrange-row.is-off .board-arrange-icon { opacity: .45; }
+.board-arrange-grip { display: grid; place-items: center; height: 36px; color: var(--secondary); cursor: grab; touch-action: none; }
+.board-arrange-grip:active { cursor: grabbing; }
+.board-arrange-icon {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  color: var(--glass-text);
+  background: rgb(0 0 0 / .04);
+}
+.board-arrange-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; font-weight: 550; color: var(--glass-text); }
+.board-arrange-tools { display: grid; grid-template-columns: repeat(3, 36px); gap: 14px; margin-right: 12px; }
+.board-arrange-modal .board-arrange-tools > button.icon-button.glass-btn {
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  min-height: 36px;
+  padding: 0;
+  border-radius: 50%;
+}
+.board-arrange-modal .board-arrange-tools > button.icon-button.glass-btn.is-off { color: var(--secondary); }
+.board-arrange-actions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 16px;
+}
+.board-arrange-actions > button.glass-btn { width: 100%; min-width: 0; min-height: 44px; justify-content: center; }
+
+@media (max-width: 520px) {
+  .board-bar { column-gap: 8px; }
+  .board-bar button.board-bar-toggle.glass-btn { width: 44px; height: 44px; min-width: 44px; min-height: 44px; }
+  .fluid-tabs.fluid-tabs.glass-segments.board-segs > button.glass-segment { min-height: 34px; padding-inline: 6px; font-size: 12px; }
+  .board-bar button.board-bar-chip.glass-btn { padding-inline: 12px; }
+  .board-arrange-row { grid-template-columns: 20px 30px minmax(0, 1fr) auto; gap: 8px; padding-inline: 8px; }
+  .board-arrange-icon { width: 30px; height: 30px; }
+  .board-arrange-tools { grid-template-columns: repeat(3, 32px); gap: 10px; margin-right: 8px; }
+  .board-arrange-modal .board-arrange-tools > button.icon-button.glass-btn { width: 32px; height: 32px; min-width: 32px; min-height: 32px; }
+}
+
+/* Expanded: one row of equal-width tabs that fill the bar; if they don't fit, keep natural widths and scroll sideways instead of wrapping. */
+.board-bar.is-expanded .fluid-tabs.fluid-tabs.glass-segments.board-segs.is-grid {
+  grid-auto-flow: column;
+  grid-template-columns: none;
+  grid-auto-columns: minmax(max-content, 1fr);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.board-bar.is-expanded .fluid-tabs.fluid-tabs.glass-segments.board-segs.is-grid::-webkit-scrollbar { display: none; }
+.board-bar.is-expanded .fluid-tabs.fluid-tabs.glass-segments.board-segs > button.glass-segment { flex-shrink: 0; }

@@ -1,0 +1,7 @@
+@import "./font-faces.css";
+
+:root {
+  --font-serif:
+    "Newsreader Variable", "Noto Serif SC Variable", "Songti SC", "Noto Serif CJK SC",
+    Georgia, serif;
+}

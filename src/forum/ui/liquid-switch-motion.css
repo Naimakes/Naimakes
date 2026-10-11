@@ -1,0 +1,7 @@
+.liquid-switch-motion > .liquid-switch-track {
+  transform-origin: center;
+}
+
+.liquid-switch-motion > .liquid-switch-track > .liquid-switch-thumb {
+  transform-origin: center;
+}

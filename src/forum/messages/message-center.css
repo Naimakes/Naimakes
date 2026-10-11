@@ -1,0 +1,163 @@
+.centre-modal .centre-heading { padding-right: 0; }
+
+.centre-modal .centre-list { gap: 12px; padding: 4px 2px 8px; }
+.centre-modal .thread-list { gap: 12px; }
+
+.centre-modal .centre-list > .centre-row,
+.centre-modal .centre-list > .centre-plate {
+  border: 1px solid var(--glass-plate-edge);
+  background: var(--glass-plate);
+  box-shadow: var(--glass-plate-shadow);
+}
+.centre-modal .centre-list > .centre-row {
+  gap: 14px;
+  padding: 18px 20px;
+  border-radius: 28px;
+}
+.centre-modal .centre-list > .centre-row.is-pinned,
+.centre-modal .centre-list > .centre-row.is-checked,
+.centre-modal .centre-list > .centre-row.is-focused { background: var(--glass-plate); }
+.centre-modal .centre-list > .centre-row.is-focused {
+  padding-inline: 20px;
+  box-shadow: var(--glass-plate-shadow), 0 0 0 1.5px rgb(0 0 0 / .18);
+}
+.centre-modal .centre-list > .centre-row.is-urgent {
+  box-shadow: var(--glass-plate-shadow), 0 0 0 1.5px color-mix(in srgb, var(--alert) 38%, transparent);
+}
+.centre-modal .centre-list > .centre-row .centre-check { padding-top: 8px; }
+
+.centre-modal .centre-list > .centre-plate {
+  padding: 8px;
+  border-radius: 30px;
+}
+.centre-modal .centre-plate > .centre-thread,
+.centre-modal .thread-list .centre-plate > .centre-thread {
+  width: 100%;
+  gap: 12px;
+  min-height: 56px;
+  padding: 10px 20px 10px 12px;
+  border: 1px solid var(--glass-border);
+  border-radius: 22px;
+  background: var(--glass-sheen), rgb(var(--paper-lift-rgb) / .9);
+  box-shadow: var(--glass-control-shadow);
+}
+.centre-modal .centre-plate > .centre-thread.is-pinned { background: var(--glass-sheen), rgb(var(--paper-lift-rgb) / .9); }
+.centre-modal .centre-plate > .centre-thread.is-checked,
+.centre-modal .thread-list .centre-plate > .centre-thread.is-checked { border-color: var(--glass-border); background: var(--glass-sheen), rgb(var(--paper-lift-rgb) / .9); }
+
+.centre-modal .centre-body > .centre-text,
+.centre-modal .centre-items > .centre-text,
+.centre-modal .centre-body > button.centre-text.glass-btn,
+.centre-modal .centre-items > button.centre-text.glass-btn {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  margin-block: 8px 2px;
+  padding: 12px 18px;
+  border-radius: 18px;
+  text-align: left;
+  white-space: pre-line;
+}
+.centre-modal .centre-items > button.centre-text.glass-btn { display: block; }
+.centre-modal .centre-body > .comment-toggle { margin-top: 8px; }
+.centre-modal .centre-detail { border-radius: 18px; padding: 14px 18px; }
+
+.fluid-tabs.fluid-tabs.glass-segments.glass-actions > button.glass-segment { color: var(--glass-text); }
+.fluid-tabs.fluid-tabs.glass-segments.glass-actions > button.glass-segment.is-on { font-weight: 650; color: #000; }
+.fluid-tabs.fluid-tabs.glass-segments.glass-actions > button.glass-segment.is-danger { color: var(--alert); }
+.fluid-tabs.fluid-tabs.glass-segments.glass-actions > button.glass-segment > svg { flex-shrink: 0; }
+.fluid-tabs.fluid-tabs.glass-segments.glass-actions > button.glass-segment .flipped { transform: rotate(180deg); }
+
+.centre-modal .fluid-tabs.fluid-tabs.glass-segments.centre-actions {
+  display: grid;
+  grid-template-columns: none;
+  grid-auto-columns: 104px;
+  width: max-content;
+  max-width: 100%;
+  margin-top: 12px;
+  padding: 5px;
+  gap: 4px;
+}
+.centre-modal .fluid-tabs.fluid-tabs.glass-segments.centre-actions > button.glass-segment { min-height: 38px; padding-inline: 12px; }
+
+.centre-modal .centre-manage { margin: 16px 0 10px; font-size: 12px; }
+.centre-modal .fluid-tabs.fluid-tabs.glass-segments.centre-manage-actions {
+  width: max-content;
+  grid-auto-columns: 112px;
+  padding: 4px;
+}
+.centre-modal .fluid-tabs.fluid-tabs.glass-segments.centre-manage-actions > button.glass-segment { min-height: 36px; padding-inline: 12px; font-size: 12.5px; }
+
+:root .centre-modal .centre-batch {
+  display: flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  gap: 18px;
+  margin: 0 0 12px;
+  padding: 8px 8px 8px 24px;
+  border-radius: 999px;
+}
+.centre-modal .centre-batch > .centre-batch-all {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  flex: 0 0 auto;
+  white-space: nowrap;
+  font-size: 12.5px;
+  color: var(--glass-text);
+}
+.centre-modal .centre-batch > .centre-batch-count {
+  flex: 1 1 auto;
+  min-width: 0;
+  white-space: nowrap;
+  font-size: 12.5px;
+  color: var(--muted);
+}
+.centre-modal .fluid-tabs.fluid-tabs.glass-segments.centre-batch-actions {
+  flex: 0 0 auto;
+  width: max-content;
+  grid-auto-columns: 112px;
+  padding: 4px;
+}
+.centre-modal .fluid-tabs.fluid-tabs.glass-segments.centre-batch-actions > button.glass-segment { min-height: 36px; font-size: 12.5px; }
+
+.centre-modal .chat-head { flex-wrap: wrap; gap: 10px 12px; }
+.centre-modal .chat-head > strong { margin-right: auto; }
+.centre-modal .fluid-tabs.fluid-tabs.glass-segments.chat-head-actions {
+  width: max-content;
+  grid-auto-columns: 104px;
+  padding: 4px;
+}
+.centre-modal .fluid-tabs.fluid-tabs.glass-segments.chat-head-actions > button.glass-segment { min-height: 36px; padding-inline: 10px; font-size: 12.5px; }
+.centre-modal .chat-bubble.is-selectable {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  align-self: stretch;
+  max-width: none;
+  padding-left: 36px;
+}
+.centre-modal .chat-bubble.is-selectable > .chat-bubble-body { max-width: 78%; }
+.centre-modal .chat-bubble > .chat-check { position: absolute; left: 4px; top: 12px; padding: 0; }
+
+@media (max-width: 640px) {
+  .centre-modal .centre-list > .centre-row { padding: 14px; gap: 10px; border-radius: 24px; }
+  .centre-modal .fluid-tabs.fluid-tabs.glass-segments.centre-actions {
+    display: grid;
+    width: 100%;
+    grid-auto-columns: minmax(0, 1fr);
+  }
+  .centre-modal .fluid-tabs.fluid-tabs.glass-segments.centre-actions > button.glass-segment { gap: 4px; padding-inline: 4px; font-size: 12px; }
+  .centre-modal .centre-manage { flex-wrap: wrap; }
+  .centre-modal .fluid-tabs.fluid-tabs.glass-segments.centre-manage-actions { grid-auto-columns: minmax(0, 1fr); width: 100%; }
+  :root .centre-modal .centre-batch { gap: 12px; padding-left: 18px; }
+  .centre-modal .fluid-tabs.fluid-tabs.glass-segments.centre-batch-actions { grid-auto-columns: 108px; }
+  .centre-modal .fluid-tabs.fluid-tabs.glass-segments.chat-head-actions { grid-auto-columns: minmax(0, 1fr); width: 100%; }
+  .centre-modal .fluid-tabs.fluid-tabs.glass-segments.chat-head-actions > button.glass-segment { gap: 4px; padding-inline: 4px; font-size: 12px; }
+}
+@media (max-width: 420px) {
+  .centre-modal .fluid-tabs.fluid-tabs.glass-segments.centre-actions > button.glass-segment > svg,
+  .centre-modal .fluid-tabs.fluid-tabs.glass-segments.chat-head-actions > button.glass-segment > svg { display: none; }
+}

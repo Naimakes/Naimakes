@@ -1,0 +1,2 @@
+<!-- 站点图标用的是商标里的 N，路径和 index.html 开屏、BrandMark 完全一致（见 tests/brand.test.mjs）。 -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="17" fill="#101112"/><g fill="#fff" transform="translate(14.55 18) scale(.11336)"><path d="M0 0H69L308 247H239L62 64.1V247H0ZM244 0H308V230.5L244 164.3Z"/></g></svg>

@@ -1,0 +1,99 @@
+:root .post-author-actions > button.glass-btn:is(.save-button, .hide-announcement-button, .post-more-button),
+:root .post-stats > button.glass-btn {
+  color: var(--glass-text);
+  background: var(--glass-sheen), rgb(var(--paper-lift-rgb) / .92);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-control-shadow);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+}
+
+.post-author-actions { display: inline-flex; align-items: center; flex-shrink: 0; margin-left: auto; }
+:is(.community-section, .search-page, .profile-page, .app-shell) .post-author .author-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+:root .post-author-actions > button.glass-btn:is(.save-button, .hide-announcement-button, .post-more-button) {
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  min-height: 36px;
+  padding: 0;
+  border-radius: 50%;
+}
+:root .post-author-actions > button.glass-btn:is(.post-more-button, .hide-announcement-button) { margin-left: 8px; }
+
+:root .post-author-actions > button.glass-btn.save-button { opacity: 1; color: var(--glass-text); }
+:root .post-author-actions > button.glass-btn.save-button:disabled { opacity: .45; }
+
+:root :is(.community-section, .search-page, .profile-page, .app-shell) .post-stats { gap: 8px; }
+:root :is(.community-section, .search-page, .profile-page, .app-shell) .post-stats > button.glass-btn {
+  gap: 6px;
+  min-width: 52px;
+  min-height: 36px;
+  padding: 7px 14px;
+  border-radius: 999px;
+}
+:root .post-stats > button.glass-btn.is-liked { color: var(--glass-accent); }
+:root .post-stats > button.glass-btn.read-later-button.is-saved { color: #000; font-weight: 600; }
+:root .post-stats > button.glass-btn.is-closed { color: var(--muted); }
+
+@media (hover: hover) and (pointer: fine) {
+  :root .post-author-actions > button.glass-btn:is(.save-button, .hide-announcement-button, .post-more-button):not(:disabled):hover,
+  :root .post-stats > button.glass-btn:not(:disabled):hover { background: var(--glass-sheen), var(--paper-peak); color: #000; }
+}
+@media (forced-colors: active) {
+  :root .post-author-actions > button.glass-btn:is(.save-button, .hide-announcement-button, .post-more-button),
+  :root .post-stats > button.glass-btn { background: ButtonFace; border-color: ButtonText; box-shadow: none; }
+}
+
+.announce-fold { display: grid; margin-bottom: 18px; }
+:root .announce-fold > button.glass-btn.announce-fold-pill {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 44px;
+  padding: 8px 22px;
+  border-radius: 999px;
+  color: var(--announce, #8a5a1f);
+  font-size: 13.5px;
+  font-weight: 650;
+  letter-spacing: .08em;
+  text-indent: .08em;
+  background: var(--glass-sheen), rgb(var(--paper-lift-rgb) / .92);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-control-shadow);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+}
+:root .announce-fold > button.glass-btn.announce-fold-pill > em {
+  display: inline-grid;
+  place-items: center;
+  min-width: 24px;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 650;
+  letter-spacing: 0;
+  color: var(--announce, #8a5a1f);
+  background: rgb(176 122 18 / .1);
+  border: 1px solid rgb(176 122 18 / .18);
+}
+@media (hover: hover) and (pointer: fine) {
+  :root .announce-fold > button.glass-btn.announce-fold-pill:not(:disabled):hover { background: var(--glass-sheen), var(--paper-peak); }
+}
+.announce-fold > .announce-fold-list {
+  margin: 0 -10px -14px;
+  padding: 18px 10px 14px;
+}
+
+@media (max-width: 520px) {
+  :is(.community-section, .search-page, .profile-page) .post-author { flex-wrap: nowrap; }
+  :is(.community-section, .search-page, .profile-page) .post-author > :not(.author-name):not(.post-author-actions) { flex-shrink: 0; }
+  :root .post-author-actions > button.glass-btn:is(.save-button, .hide-announcement-button, .post-more-button) { width: 32px; height: 32px; min-width: 32px; min-height: 32px; }
+  :root .post-author-actions > button.glass-btn:is(.post-more-button, .hide-announcement-button) { margin-left: 6px; }
+  .post-author .announcement-label { font-size: 0; gap: 0; padding-inline: 6px; }
+  .post-author .announcement-label > svg { width: 12px; height: 12px; }
+}

@@ -1,0 +1,174 @@
+import { useSyncExternalStore } from "react";
+import { info, type Attachment, type FileInfo } from "./attachments";
+
+export type Source = { type: string; id: string; title: string; url: string; board: string; excerpt: string };
+export type ChatMessage = {
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+  sources?: Source[];
+  error?: string;
+  offline?: boolean;
+  files?: FileInfo[];
+  at: number;
+};
+export type Phase = "idle" | "searching" | "writing";
+type ChatState = { messages: ChatMessage[]; phase: Phase; unread: boolean };
+
+const LIMIT = 40;
+let owner = "guest";
+let state: ChatState = { messages: load(owner), phase: "idle", unread: false };
+let controller: AbortController | null = null;
+const sent = new Map<string, Attachment[]>();
+const listeners = new Set<() => void>();
+const subscribe = (fn: () => void) => {
+  listeners.add(fn);
+  return () => listeners.delete(fn);
+};
+const keyOf = (id: string) => "nmk-assistant-chat:" + id;
+
+function load(id: string): ChatMessage[] {
+  try {
+    const raw = localStorage.getItem(keyOf(id));
+    const list = raw ? (JSON.parse(raw) as ChatMessage[]) : [];
+    return Array.isArray(list) ? list.filter((m) => m && typeof m.content === "string").slice(-LIMIT) : [];
+  } catch {
+    return [];
+  }
+}
+
+function set(next: Partial<ChatState>, save = false) {
+  state = { ...state, ...next };
+  if (save)
+    try {
+      localStorage.setItem(keyOf(owner), JSON.stringify(state.messages.slice(-LIMIT)));
+    } catch {}
+  listeners.forEach((fn) => fn());
+}
+
+const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
+
+export function useChat() {
+  return useSyncExternalStore(subscribe, () => state);
+}
+
+export function switchOwner(id: string | null) {
+  const next = id || "guest";
+  if (next === owner) return;
+  controller?.abort();
+  sent.clear();
+  owner = next;
+  set({ messages: load(owner), phase: "idle", unread: false });
+}
+
+export function clearChat() {
+  controller?.abort();
+  sent.clear();
+  set({ messages: [], phase: "idle", unread: false }, true);
+}
+
+export function markRead() {
+  if (state.unread) set({ unread: false });
+}
+
+export function stopReply() {
+  controller?.abort();
+}
+
+function patchLast(update: (message: ChatMessage) => ChatMessage, save = false) {
+  const messages = state.messages.slice();
+  const last = messages[messages.length - 1];
+  if (!last || last.role !== "assistant") return;
+  messages[messages.length - 1] = update(last);
+  set({ messages }, save);
+}
+
+export async function ask(question: string, page: { path: string; title: string; recent?: string }, { visible }: { visible: () => boolean }, files: Attachment[] = []) {
+  const text = question.trim() || (files.length ? "请看看我附上的文件。" : "");
+  if (!text || state.phase !== "idle") return;
+  controller?.abort();
+  const abort = new AbortController();
+  controller = abort;
+  const history = state.messages
+    .filter((m) => !m.error && m.content.trim())
+    .slice(-11)
+    .map((m) => ({ role: m.role, content: m.content }));
+  const reply: ChatMessage = { id: uid(), role: "assistant", content: "", at: Date.now() };
+  const asked: ChatMessage = { id: uid(), role: "user", content: text, at: Date.now(), ...(files.length ? { files: info(files) } : {}) };
+  if (files.length) sent.set(asked.id, files);
+  set(
+    {
+      messages: [...state.messages, asked, reply].slice(-LIMIT),
+      phase: "searching",
+    },
+    true,
+  );
+  try {
+    const response = await fetch("/api/assistant/chat", {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        messages: [...history, { role: "user", content: text }],
+        page,
+        ...(files.length ? { attachments: files.map(({ name, kind, mime, data }) => ({ name, kind, mime, data })) } : {}),
+      }),
+      signal: abort.signal,
+    });
+    if (!response.ok || !response.body) {
+      const data = await response.json().catch(() => ({}));
+      throw new Error((data as { error?: string }).error || "Naimakes 暂时没有回应，请稍后再试。");
+    }
+    const reader = response.body.pipeThrough(new TextDecoderStream()).getReader();
+    let buffer = "";
+    let finished = false;
+    while (!finished) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buffer += value;
+      let cut = buffer.indexOf("\n\n");
+      while (cut >= 0) {
+        const block = buffer.slice(0, cut);
+        buffer = buffer.slice(cut + 2);
+        cut = buffer.indexOf("\n\n");
+        const event = block.match(/^event: (.+)$/m)?.[1];
+        const raw = block.match(/^data: (.*)$/m)?.[1];
+        if (!event || raw === undefined) continue;
+        const data = JSON.parse(raw);
+        if (event === "sources") patchLast((m) => ({ ...m, sources: data as Source[] }));
+        else if (event === "delta") {
+          if ((state.phase as Phase) !== "writing") set({ phase: "writing" });
+          patchLast((m) => ({ ...m, content: m.content + (data as { text: string }).text }));
+        } else if (event === "error") {
+          patchLast((m) => ({ ...m, error: (data as { message: string }).message }));
+          finished = true;
+        } else if (event === "done") {
+          if ((data as { offline?: boolean }).offline) patchLast((m) => ({ ...m, offline: true }));
+          finished = true;
+        }
+      }
+    }
+    if (!finished && !abort.signal.aborted) patchLast((m) => ({ ...m, error: m.content ? "回答被意外中断了。" : "连接中断了，请重试。" }));
+  } catch (error) {
+    if (abort.signal.aborted) patchLast((m) => (m.content ? m : { ...m, error: "已停止回答。" }));
+    else
+      patchLast((m) => ({
+        ...m,
+        error: (error as Error).name === "TypeError" ? "网络连接失败，请检查网络后重试。" : (error as Error).message,
+      }));
+  } finally {
+    if (controller === abort) controller = null;
+    set({ phase: "idle", unread: !visible() }, true);
+  }
+}
+
+export function retryLast(page: { path: string; title: string; recent?: string }, options: { visible: () => boolean }) {
+  const messages = state.messages.slice();
+  const lastUser = [...messages].reverse().find((m) => m.role === "user");
+  if (!lastUser) return;
+  const at = messages.lastIndexOf(lastUser);
+  set({ messages: messages.slice(0, at) }, true);
+  const files = sent.get(lastUser.id) || [];
+  sent.delete(lastUser.id);
+  return ask(lastUser.content, page, options, files);
+}

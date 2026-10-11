@@ -1,0 +1,29 @@
+:is(
+  button,
+  a,
+  summary,
+  label,
+  [role="button"],
+  [role="tab"],
+  [role="menuitem"],
+  [role="menuitemradio"],
+  [role="menuitemcheckbox"],
+  [role="option"],
+  [role="switch"],
+  [role="radio"],
+  [role="checkbox"],
+  input:is([type="button"], [type="submit"], [type="reset"], [type="checkbox"], [type="radio"]),
+  .glass-btn,
+  .liquid-switch,
+  .dialog-resize-se
+):is(:focus, :focus-visible) {
+  outline: none !important;
+}
+
+:is(button, a, summary, label, [role="button"], [role="tab"]) {
+  -webkit-tap-highlight-color: transparent;
+}
+
+.folder-picker > label:has(input:focus-visible) .picker-check {
+  outline: none !important;
+}

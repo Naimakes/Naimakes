@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="light">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#e8e5e1" />
+    <meta
+      name="description"
+      content="Naimakes 论坛 — 与好奇的人一起，讨论人工智能、太空探索、生命科学与人类未来。让想法相遇，让未来发生。"
+    />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <title>Naimakes 论坛 · 思想，先于未来</title>
+    <style>
+      #boot {
+        position: fixed;
+        inset: 0;
+        z-index: 9999;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 34px;
+        overflow: hidden;
+        isolation: isolate;
+        background: #fff;
+        color: #000;
+        font-family:
+          "Newsreader Variable", "Noto Serif SC Variable", "Songti SC",
+          "Noto Serif CJK SC", Georgia, serif;
+        transition: opacity 0.55s cubic-bezier(0.22, 1, 0.36, 1);
+      }
+      #boot .boot-mark {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 16px;
+        animation: boot-arrive 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+      }
+      #boot .boot-logo {
+        display: block;
+        width: clamp(244px, 32vw, 306px);
+        max-width: 76vw;
+        height: auto;
+        aspect-ratio: 966 / 247;
+        color: #000;
+      }
+      #boot .boot-line {
+        position: relative;
+        width: 164px;
+        height: 12px;
+        box-sizing: border-box;
+        padding: 2px;
+        border-radius: 999px;
+        background:
+          linear-gradient(180deg, #0000001f, #00000012 55%, #0000000a),
+          #f2f3f5b3;
+        -webkit-backdrop-filter: blur(12px) saturate(1.8);
+        backdrop-filter: blur(12px) saturate(1.8);
+        box-shadow:
+          inset 0 1px 2px #0000001f,
+          inset 0 -1px 0.5px #ffffffb3,
+          inset 0 0 0 0.5px #00000014,
+          0 1px 0 #ffffff,
+          0 6px 16px #0000000d;
+        animation: boot-arrive 0.45s 0.04s cubic-bezier(0.22, 1, 0.36, 1) both;
+      }
+      #boot .boot-line::after {
+        content: "";
+        display: block;
+        min-width: 8px;
+        width: calc(var(--boot-progress, 0.04) * 100%);
+        height: 100%;
+        border-radius: inherit;
+        background: linear-gradient(180deg, #ffffff, #fbfbfc 60%, #f1f2f4);
+        box-shadow:
+          0 0 0 0.5px #0000000f,
+          0 1px 2px #0000001f,
+          inset 0 0.5px 0 #ffffff;
+        transition: width 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+      }
+      #boot .boot-slow {
+        position: absolute;
+        bottom: max(44px, env(safe-area-inset-bottom));
+        max-width: 78vw;
+        text-align: center;
+        font-size: 11px;
+        line-height: 1.9;
+        letter-spacing: 0.08em;
+        color: #0000006b;
+        opacity: 0;
+        animation: boot-fade 0.6s ease 9s both;
+      }
+      #boot .boot-slow a {
+        color: #000;
+        text-underline-offset: 3px;
+      }
+      #boot.is-done {
+        opacity: 0;
+        pointer-events: none;
+      }
+      #boot.is-stalled .boot-line::after {
+        opacity: 0.55;
+      }
+      @keyframes boot-arrive {
+        from {
+          opacity: 0;
+          transform: translateY(8px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+      @keyframes boot-fade {
+        to {
+          opacity: 1;
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        #boot { transition-duration: 0.01ms; }
+        #boot .boot-mark,
+        #boot .boot-line { animation: none; }
+        #boot .boot-line::after { transition-duration: 0.01ms; }
+        #boot .boot-slow { animation-duration: 0.01ms; }
+      }
+      @media (max-height: 360px) {
+        #boot { gap: 22px; }
+        #boot .boot-slow { bottom: 12px; }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <div id="boot" role="status" aria-live="polite" aria-label="正在加载 Naimakes">
+      <div class="boot-mark">
+        <svg class="boot-logo" viewBox="0 0 966 247" aria-hidden="true" focusable="false" fill="currentColor">
+          <path d="M0 0H69L308 247H239L62 64.1V247H0ZM244 0H308V230.5L244 164.3Z"/>
+          <path d="M347 0H411L502 115.6 593 0H657V247H598V78.7L502 196.9 406 78.7V247H347Z"/>
+          <path d="M691 0H751V247H691ZM883 0H962L837.5 115.6 966 247H885L762 116.2Z"/>
+        </svg>
+      </div>
+      <div class="boot-line" aria-hidden="true"></div>
+      <span class="boot-slow">网络似乎有点慢，正在继续连接… <a href="">刷新重试</a></span>
+      <noscript>
+        <style>
+          #boot .boot-slow, #boot .boot-line { display: none; }
+          #boot .boot-no-script { animation: none; opacity: 1; display: block; }
+        </style>
+        <span class="boot-slow boot-no-script">请启用浏览器的 JavaScript 后刷新页面。</span>
+      </noscript>
+    </div>
+    <script src="/loading-screen.js"></script>
+    <script type="module" src="/src/forum/main.tsx"></script>
+  </body>
+</html>

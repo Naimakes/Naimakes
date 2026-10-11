@@ -1,0 +1,8 @@
+#inspection-lines {
+  stroke-linecap: butt;
+  stroke-linejoin: miter;
+  filter: none;
+}
+#inspection-point {
+  fill: #24221f;
+}

@@ -1,0 +1,67 @@
+.validation-hint {
+  position: fixed;
+  inset: auto;
+  z-index: 2147483600;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  box-sizing: border-box;
+  width: max-content;
+  max-width: min(320px, calc(100vw - 32px));
+  margin: 0;
+  padding: 15px 20px;
+  border: 1px solid var(--glass-border);
+  border-radius: 26px;
+  color: var(--glass-text);
+  background:
+    radial-gradient(120% 150% at 14% 0%, rgb(var(--paper-lift-rgb) / .58), transparent 60%),
+    var(--glass-sheen),
+    var(--glass-popup-bg);
+  box-shadow: var(--glass-rim), 0 16px 40px -14px rgb(0 0 0 / .26), 0 4px 12px -6px rgb(0 0 0 / .14);
+  -webkit-backdrop-filter: blur(26px) saturate(170%);
+  backdrop-filter: blur(26px) saturate(170%);
+  overflow: visible;
+  pointer-events: none;
+  isolation: isolate;
+}
+.validation-hint::backdrop { background: transparent; }
+.validation-hint::after {
+  content: "";
+  position: absolute;
+  left: var(--hint-arrow, 22px);
+  width: 17px;
+  height: 9px;
+  translate: -50% 0;
+  background: var(--glass-popup-bg);
+  -webkit-backdrop-filter: blur(26px) saturate(170%);
+  backdrop-filter: blur(26px) saturate(170%);
+  clip-path: polygon(50% 0, 100% 100%, 0 100%);
+}
+.validation-hint[data-side="bottom"] { transform-origin: var(--hint-arrow, 22px) 0; }
+.validation-hint[data-side="bottom"]::after { top: -8px; }
+.validation-hint[data-side="top"] { transform-origin: var(--hint-arrow, 22px) 100%; }
+.validation-hint[data-side="top"]::after { bottom: -8px; rotate: 180deg; }
+.validation-hint-symbol {
+  display: grid;
+  place-items: center;
+  flex: 0 0 30px;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  color: #a33f50;
+  background:
+    linear-gradient(145deg, rgb(var(--paper-lift-rgb) / .6), transparent 62%),
+    color-mix(in srgb, #a33f50 12%, var(--glass-bg));
+  border: 1px solid color-mix(in srgb, #a33f50 18%, var(--glass-border));
+  box-shadow: var(--glass-rim);
+}
+.validation-hint-message {
+  min-width: 0;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+@media (prefers-reduced-transparency: reduce) {
+  .validation-hint, .validation-hint::after { -webkit-backdrop-filter: none; backdrop-filter: none; background-color: rgb(250 246 242); }
+}
