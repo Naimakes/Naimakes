@@ -1,0 +1,176 @@
+.dv-root {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+.dv-css,
+.dv-gl {
+  position: absolute;
+  inset: 0;
+}
+.dv-css > div {
+  pointer-events: none;
+}
+.dv-gl {
+  z-index: 1;
+}
+
+.dv-card {
+  --dv-edge: 110px;
+  width: 1554px;
+  height: 1036px;
+  transform-style: preserve-3d;
+  pointer-events: none;
+  user-select: none;
+}
+.dv-card-face {
+  position: absolute;
+  inset: 0;
+  clip-path: polygon(9px 0, calc(100% - 9px) 0, 100% 9px, 100% calc(100% - 9px), calc(100% - 9px) 100%, 9px 100%, 0 calc(100% - 9px), 0 9px);
+  backface-visibility: hidden;
+}
+.dv-card-svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  shape-rendering: geometricPrecision;
+  text-rendering: geometricPrecision;
+}
+.dv-card-edge {
+  position: absolute;
+  background: linear-gradient(90deg, #d8d0c9, #cdc4bc 45%, #d6cec7);
+  backface-visibility: hidden;
+}
+.dv-card-edge-top,
+.dv-card-edge-bottom {
+  left: 9px;
+  width: calc(100% - 18px);
+  height: var(--dv-edge);
+}
+.dv-card-edge-left,
+.dv-card-edge-right {
+  top: 9px;
+  height: calc(100% - 18px);
+  width: var(--dv-edge);
+  background: linear-gradient(0deg, #d8d0c9, #cbc2ba 50%, #d5cdc6);
+}
+.dv-card-edge-top {
+  top: 0;
+  transform-origin: top;
+  transform: rotateX(-90deg);
+}
+.dv-card-edge-bottom {
+  bottom: 0;
+  transform-origin: bottom;
+  transform: rotateX(90deg);
+}
+.dv-card-edge-left {
+  left: 0;
+  transform-origin: left;
+  transform: rotateY(90deg);
+}
+.dv-card-edge-right {
+  right: 0;
+  transform-origin: right;
+  transform: rotateY(-90deg);
+}
+
+.dv-groove,
+.dv-groove-lo {
+  fill: none;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+.dv-groove {
+  stroke: rgb(96 86 78 / 0.58);
+  stroke-width: 1.8;
+}
+.dv-groove-lo {
+  stroke: rgb(255 253 250 / 0.9);
+  stroke-width: 1.5;
+  transform: translate(1.2px, 1.3px);
+}
+.dv-bevel-hi {
+  fill: none;
+  stroke: rgb(255 255 255 / 0.75);
+  stroke-width: 2.2;
+}
+.dv-bevel-lo {
+  fill: none;
+  stroke: rgb(120 108 98 / 0.35);
+  stroke-width: 2.2;
+}
+
+.dv-stripes path,
+.dv-stripes-lo path {
+  fill: none;
+  stroke-width: 3.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.dv-stripes path {
+  stroke: rgb(104 94 86 / 0.62);
+}
+.dv-stripes circle {
+  fill: rgb(104 94 86 / 0.5);
+}
+.dv-stripes-lo path {
+  stroke: rgb(255 253 250 / 0.9);
+}
+.dv-stripes-lo circle {
+  fill: rgb(255 253 250 / 0.8);
+}
+.dv-dial-ring {
+  fill: none;
+  stroke: rgb(96 86 78 / 0.55);
+  stroke-width: 1.8;
+}
+.dv-dial-dot {
+  fill: #cfc6bf;
+  stroke: rgb(96 86 78 / 0.6);
+  stroke-width: 1.4;
+}
+
+.dv-label text {
+  font-family: var(--font-serif);
+  fill: #121110;
+  stroke: #121110;
+  stroke-width: 0.45px;
+  stroke-linejoin: round;
+}
+.dv-label-name {
+  font-size: 21px;
+  font-weight: 700;
+}
+.dv-label-db {
+  font-size: 8.5px;
+  font-weight: 600;
+  fill: #857d76 !important;
+  stroke: none !important;
+  letter-spacing: 1px;
+}
+.dv-label-info {
+  font-size: 17.5px;
+  font-weight: 700;
+  letter-spacing: 1.2px;
+}
+.dv-label-no {
+  font-size: 33px;
+  font-weight: 600;
+}
+
+.dv-letters text {
+  font-family: var(--font-serif);
+  font-size: 65.67px;
+  font-weight: 700;
+}
+.dv-letters-lo {
+  fill: rgb(110 98 88 / 0.34);
+}
+.dv-letters-hi {
+  fill: rgb(255 255 255 / 0.85);
+}
+.dv-letters-face {
+  fill: #e0d9d3;
+}

@@ -1,0 +1,330 @@
+.glass-datetime {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  min-height: 50px;
+  padding: 4px 5px 4px 22px;
+  border-radius: 999px;
+  color: var(--glass-text);
+  background: var(--glass-sheen), var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-control-shadow);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+}
+.glass-datetime-value {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 8px 6px 8px 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-size: 14px;
+  line-height: 1.5;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+  position: relative;
+}
+.glass-datetime[data-empty="true"] .glass-datetime-value { color: var(--muted); }
+.glass-datetime-clear {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
+}
+.glass-datetime-clear:hover { background: var(--glass-hover); color: var(--glass-text); }
+.glass-datetime .glass-datetime-icon {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
+  min-height: 40px;
+  padding: 0;
+  border-radius: 50%;
+  color: var(--glass-text);
+  background: var(--glass-sheen), var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-control-shadow);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+}
+.glass-datetime .glass-datetime-icon[aria-expanded="true"] {
+  color: var(--glass-selection-text);
+  background: var(--glass-selection-bg);
+}
+
+.glass-datetime-popup.liquid-popover {
+  position: fixed;
+  inset: auto;
+  margin: 0;
+  padding: 0;
+  overflow: auto;
+  z-index: 150;
+  box-sizing: border-box;
+  overscroll-behavior: contain;
+  border-radius: 28px;
+  color: var(--glass-text);
+  background: var(--glass-sheen), var(--glass-popup-bg, var(--glass-bg));
+  border: 1px solid var(--glass-border);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  box-shadow: inset 0 1px 0 var(--glass-highlight), var(--glass-shadow);
+}
+.glass-datetime-panel {
+  display: grid;
+  grid-template-columns: auto auto;
+  gap: 18px 22px;
+  padding: 20px 22px 18px;
+}
+
+.glass-calendar > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+  padding-left: 6px;
+}
+.glass-calendar > header strong { font-size: 15px; font-weight: 650; }
+.glass-calendar > header > div { display: flex; gap: 8px; }
+.glass-calendar .glass-calendar-nav {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  min-width: 34px;
+  min-height: 34px;
+  padding: 0;
+  border-radius: 50%;
+  color: var(--glass-text);
+  background: var(--glass-sheen), var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-control-shadow);
+}
+.glass-calendar .glass-calendar-nav:disabled { opacity: .35; }
+.glass-calendar-title {
+  position: relative;
+  display: inline-flex;
+  min-width: 110px;
+  overflow: hidden;
+}
+.glass-calendar-title > strong { display: inline-block; white-space: nowrap; }
+.glass-calendar-weekdays,
+.glass-calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 38px);
+  gap: 3px;
+}
+.glass-calendar-weekdays { margin-bottom: 3px; }
+.glass-calendar-page {
+  position: relative;
+  overflow: hidden;
+  margin-inline: -4px;
+  padding: 4px;
+}
+.glass-calendar-weekday {
+  display: grid;
+  place-items: center;
+  height: 28px;
+  font-size: 11px;
+  color: var(--muted);
+}
+.glass-calendar-grid > button {
+  position: relative;
+  isolation: isolate;
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 50%;
+  background: none;
+  color: var(--glass-text);
+  font: inherit;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  transition: background-color .15s ease, color .15s ease, box-shadow .15s ease;
+}
+.glass-calendar-grid > button[data-outside="true"] { color: var(--muted); opacity: .6; }
+.glass-calendar-grid > button[data-today="true"] {
+  border-color: var(--glass-border);
+  background: var(--glass-sheen), var(--glass-bg);
+  box-shadow: var(--glass-control-shadow);
+  font-weight: 650;
+}
+.glass-calendar-grid > button:hover:not(:disabled) { background: var(--glass-hover); }
+.glass-calendar-grid > button[aria-selected="true"] {
+  color: var(--glass-selection-text);
+  font-weight: 650;
+  opacity: 1;
+}
+.glass-calendar-grid > button[aria-selected="true"]:hover { background: none; }
+.glass-calendar-bubble {
+  position: absolute;
+  inset: -1px;
+  z-index: -1;
+  border-radius: 50%;
+  background: var(--glass-selection-bg);
+  border: 1px solid var(--glass-border);
+  box-shadow: inset 0 1px 0 #ffffff38, 0 6px 14px -8px #00000059;
+}
+.glass-calendar-day { position: relative; }
+.glass-calendar-grid > button:disabled { opacity: .25; cursor: default; }
+
+.glass-wheels {
+  display: flex;
+  gap: 12px;
+  padding-top: 2px;
+}
+.glass-wheel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+.glass-wheel-label {
+  padding: 5px 14px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 650;
+  letter-spacing: 1px;
+  text-indent: 1px;
+  color: var(--glass-text);
+  background: var(--glass-sheen), var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-control-shadow);
+}
+.glass-wheel-window {
+  position: relative;
+  width: 76px;
+  height: 252px;
+  border-radius: 999px;
+  background: var(--glass-sheen), var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  box-shadow: inset 0 1px 0 var(--glass-highlight), inset 0 8px 18px -12px #00000026;
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  overflow: hidden;
+}
+.glass-wheel-lens {
+  position: absolute;
+  z-index: 0;
+  left: 5px;
+  right: 5px;
+  top: calc(50% - 20px);
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-right: 9px;
+  border-radius: 999px;
+  background: var(--glass-sheen), var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-control-shadow);
+  pointer-events: none;
+}
+.glass-wheel-lens > small {
+  font-size: 10px;
+  font-weight: 650;
+  color: var(--muted);
+}
+.glass-wheel-track {
+  position: relative;
+  z-index: 1;
+  height: 100%;
+  padding-block: 108px;
+  overflow-y: auto;
+  scroll-snap-type: y mandatory;
+  scrollbar-width: none;
+  perspective: 360px;
+  outline: none;
+  -webkit-mask-image: linear-gradient(to bottom, transparent, #000 30%, #000 70%, transparent);
+  mask-image: linear-gradient(to bottom, transparent, #000 30%, #000 70%, transparent);
+}
+.glass-wheel-track::-webkit-scrollbar { display: none; }
+.glass-wheel-window:has(.glass-wheel-track:focus-visible) {
+  outline: 2px solid color-mix(in srgb, var(--glass-accent) 65%, transparent);
+  outline-offset: 2px;
+}
+.glass-wheel-track > button {
+  display: block;
+  width: 100%;
+  height: 36px;
+  padding: 0 14px 0 0;
+  border: 0;
+  background: none;
+  color: var(--glass-text);
+  font: inherit;
+  font-size: 17px;
+  font-variant-numeric: tabular-nums;
+  line-height: 36px;
+  text-align: center;
+  scroll-snap-align: center;
+  cursor: pointer;
+  transform-origin: center;
+  will-change: transform, opacity;
+}
+.glass-wheel-track > button[data-current="true"] { font-weight: 700; }
+.glass-wheel-track > button[data-off="true"] { color: var(--muted); text-decoration: line-through; }
+
+.glass-datetime-actions {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 14px;
+  border-top: 1px solid var(--glass-line);
+}
+.glass-datetime-actions > div { display: flex; gap: 8px; }
+.glass-datetime-actions .button { min-height: 38px; padding: 8px 18px; font-size: 13px; }
+
+@media (max-width: 600px) {
+  .glass-datetime { padding-left: 18px; }
+  .glass-datetime-value { font-size: 16px; }
+  .glass-datetime-panel { grid-template-columns: auto; padding: 16px; justify-items: center; }
+  .glass-calendar { width: 100%; }
+  .glass-calendar-weekdays,
+  .glass-calendar-grid { grid-template-columns: repeat(7, minmax(34px, 1fr)); }
+  .glass-calendar-grid > button { width: 100%; height: auto; aspect-ratio: 1; max-width: 42px; justify-self: center; }
+  .glass-wheels { flex-direction: row; }
+  .glass-wheel-window { height: 180px; }
+  .glass-wheel-track { padding-block: 72px; }
+  .glass-datetime-actions { width: 100%; }
+}
+
+@media (max-height: 820px) and (min-width: 601px) {
+  .glass-datetime-panel { gap: 6px 20px; padding: 12px 20px 10px; }
+  .glass-calendar-page { padding-block: 2px; }
+  .glass-calendar > header { margin-bottom: 6px; }
+  .glass-calendar .glass-calendar-nav { width: 30px; height: 30px; min-width: 30px; min-height: 30px; }
+  .glass-calendar-weekdays,
+  .glass-calendar-grid { grid-template-columns: repeat(7, 32px); gap: 2px; }
+  .glass-calendar-weekday { height: 22px; }
+  .glass-calendar-grid > button { width: 32px; height: 32px; }
+  .glass-wheel-window { height: 180px; }
+  .glass-wheel-track { padding-block: 72px; }
+  .glass-datetime-actions { padding-top: 0; border-top: 0; }
+  .glass-datetime-actions .button { min-height: 34px; padding-block: 6px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .glass-wheel-track > button { transform: none !important; }
+}
+@media (forced-colors: active) {
+  .glass-calendar-grid > button[aria-selected="true"] { background: Highlight; color: HighlightText; forced-color-adjust: none; }
+}

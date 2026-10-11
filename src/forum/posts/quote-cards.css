@@ -1,0 +1,200 @@
+:root .quote-card {
+  border-radius: var(--cover-radius, 26px);
+  background: var(--glass-sheen), var(--glass-card-bg, var(--glass-bg));
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-control-shadow);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+}
+:root .quote-card > .quote-card-open.glass-btn {
+  width: 100%;
+  min-height: 0;
+  padding: 18px 22px;
+  gap: 9px;
+  border: 0;
+  border-radius: inherit;
+  background: transparent;
+  box-shadow: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  opacity: 1;
+  filter: none;
+}
+:root .quote-card > .quote-card-open.glass-btn:disabled { cursor: default; }
+:root .quote-card > .quote-card-open .quote-card-foot { width: 100%; }
+:root .quote-card > .quote-card-open .quote-card-stats { margin-left: auto; gap: 6px; }
+:root .quote-card > .quote-card-open .quote-card-stats > svg:not(:first-child) { margin-left: 6px; }
+:root .quote-card > .quote-card-remove.glass-btn {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 1;
+  margin: 0;
+}
+:root .quote-card:has(> .quote-card-remove) .quote-card-top { padding-right: 46px; }
+:root .chat-bubble .quote-card { box-shadow: none; }
+:root .composer-modal .quote-list { margin-bottom: 20px; }
+
+:root .comment-actions > .comment-vote.glass-btn,
+:root .comment-actions > .comment-vote.glass-btn[data-icon-only="true"] {
+  width: auto;
+  height: auto;
+  min-width: 66px;
+  min-height: 29px;
+  padding: 5px 10px;
+  justify-content: center;
+  border-radius: 999px;
+}
+
+:root .profile-page .profile-stats {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px;
+  border-radius: 999px;
+  background: var(--glass-plate);
+  border: 1px solid var(--glass-plate-edge);
+  box-shadow: var(--glass-plate-shadow);
+  -webkit-backdrop-filter: var(--glass-panel-blur);
+  backdrop-filter: var(--glass-panel-blur);
+}
+:root .profile-page .profile-stats .profile-stat-wrap { display: flex; }
+:root .profile-page .profile-stats .profile-stat,
+:root .profile-page .profile-stats .profile-stat.glass-btn {
+  box-sizing: border-box;
+  width: 76px;
+  min-width: 76px;
+  height: 54px;
+  min-height: 54px;
+  padding: 0;
+  gap: 2px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  color: var(--glass-text);
+  background: transparent;
+  box-shadow: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+:root .profile-page .profile-stats .profile-stat.is-clickable::before { display: none; }
+:root .profile-page .profile-stats .profile-stat.is-clickable:is(:hover, :focus-visible, [aria-expanded="true"]) {
+  color: var(--glass-text);
+  background: var(--glass-sheen), rgb(var(--paper-lift-rgb) / .95);
+  border-color: var(--glass-border);
+  box-shadow: var(--glass-control-shadow);
+}
+:root .profile-page .profile-stats .profile-stat.is-clickable:is(:hover, :focus-visible, [aria-expanded="true"]) strong { color: var(--glass-text); }
+:root .profile-page .profile-stats .profile-stat.is-clickable:is(:hover, :focus-visible, [aria-expanded="true"]) small { color: var(--muted); }
+:root .profile-page .profile-bar-end .profile-stats { justify-content: flex-end; }
+@media (max-width: 600px) {
+  :root .profile-page .profile-bar-end .profile-stats { display: flex; justify-content: space-between; }
+  :root .profile-page .profile-stats > :is(.profile-stat, .profile-stat-wrap) { flex: 1 1 0; }
+  :root .profile-page .profile-stats .profile-stat,
+  :root .profile-page .profile-stats .profile-stat.glass-btn { width: 100%; min-width: 0; height: 50px; min-height: 50px; }
+}
+
+.profile-likes .profile-like-list {
+  display: grid;
+  gap: 12px;
+  margin-top: 16px;
+  padding: 14px;
+  border-radius: 28px;
+  background: var(--glass-plate, rgb(0 0 0 / .035));
+  box-shadow: var(--glass-plate-shadow, inset 0 1px 2px rgb(0 0 0 / .05));
+}
+.profile-likes .profile-like-item {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 18px;
+  border-radius: 20px;
+  background: var(--glass-sheen), var(--glass-card-bg, var(--glass-bg));
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-control-shadow);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+}
+.profile-likes .profile-like-body { display: grid; gap: 6px; min-width: 0; }
+.profile-likes .profile-like-body > p { margin: 0; font-size: 13px; color: var(--muted); }
+.profile-likes .profile-like-body > p .inline-link { padding: 0; min-height: 0; font-weight: 600; color: var(--text); }
+.profile-likes .profile-like-target.glass-btn {
+  display: grid;
+  justify-items: start;
+  gap: 4px;
+  width: 100%;
+  min-height: 0;
+  padding: 0;
+  text-align: left;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+.profile-likes .profile-like-target strong {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 14px;
+  font-weight: 550;
+  color: var(--text);
+}
+.profile-likes .profile-like-excerpt {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  color: var(--secondary);
+}
+.profile-likes .profile-like-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+@media (max-width: 600px) {
+  .profile-likes .profile-like-list { padding: 10px; border-radius: 24px; }
+  .profile-likes .profile-like-item { grid-template-columns: auto minmax(0, 1fr); padding: 12px 14px; }
+  .profile-likes .profile-like-meta { grid-column: 2; }
+}
+:root .detail-action-bar { column-gap: 12px; }
+
+@media (max-width: 720px) {
+  :root .community-section .feed-nav { margin-bottom: 10px; }
+  :root .community-section .board-bar { margin-top: 0; column-gap: 8px; }
+}
+
+:root .share-modal .share-results { max-height: min(56vh, 460px); }
+:root .share-modal :is(.share-copy-link, .share-back).button.glass-btn {
+  width: auto;
+  min-height: 44px;
+  gap: 9px;
+  padding: 10px 22px 10px 18px;
+  border-radius: 999px;
+  font-size: 13px;
+}
+:root .share-modal .share-back.button.glass-btn { margin: 0 0 18px; }
+:root .share-modal .share-target {
+  gap: 14px;
+  margin-bottom: 18px;
+  padding: 10px 26px 10px 10px;
+  border-radius: 999px;
+  background: var(--glass-sheen), var(--glass-card-bg, var(--glass-bg));
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-control-shadow);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+}
+:root .share-modal .share-target > .avatar { width: 44px; height: 44px; }
+:root .share-modal .share-note {
+  display: grid;
+  gap: 10px;
+  margin-top: 20px;
+}
+:root .share-modal .share-note > textarea { margin: 0; }

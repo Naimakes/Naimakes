@@ -1,0 +1,373 @@
+:root :is(.app-shell,.liquid-dialog) input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([hidden]):not([hidden]):not(.profile-bio-input):not(:is(.search-input-wrap,.search-page-form,.profile-search,.library-search,.admin-search,.profile-tag-input,.keyword-field) > input) {
+  box-sizing: border-box;
+  min-height: 50px;
+  padding: 12px 22px;
+  border-radius: 999px;
+  line-height: 1.5;
+  color: var(--glass-text);
+  background: var(--glass-sheen), var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-control-shadow);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  transition: border-color .2s ease, box-shadow .2s ease;
+}
+
+:root :is(.app-shell,.liquid-dialog) textarea:not([hidden]):not([hidden]):not([hidden]):not([hidden]):not([hidden]) {
+  box-sizing: border-box;
+  padding: 13px 22px;
+  border-radius: 26px;
+  line-height: 1.6;
+  resize: vertical;
+  color: var(--glass-text);
+  background: var(--glass-sheen), var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-control-shadow);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  transition: border-color .2s ease, box-shadow .2s ease;
+}
+:root .composer-modal textarea.title-input.line-field { font-size: 16px; }
+:root :is(.app-shell,.liquid-dialog) textarea:not([hidden]):not([hidden]):not([hidden]):not([hidden]):not([hidden])::-webkit-resizer,
+:root .keyword-field::-webkit-resizer {
+  background-color: transparent;
+  background-image: linear-gradient(135deg, transparent 0 40%, color-mix(in srgb, var(--glass-text) 55%, transparent) 40% 60%, transparent 60% 100%);
+  background-size: 45% 45%;
+  background-repeat: no-repeat;
+  background-position: 0% 0%;
+}
+
+:root :is(.app-shell,.liquid-dialog) .keyword-field > input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([hidden]):not([hidden]) {
+  min-height: 0;
+  padding: 0 6px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  outline: none;
+}
+
+:root :is(.app-shell,.liquid-dialog) input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([hidden]):not([hidden]):not(.profile-bio-input):not(:is(.search-input-wrap,.search-page-form,.profile-search,.library-search,.admin-search,.profile-tag-input,.keyword-field) > input):focus-visible,
+:root :is(.app-shell,.liquid-dialog) textarea:not([hidden]):not([hidden]):not([hidden]):not([hidden]):not([hidden]):focus-visible {
+  outline: none;
+  border-color: var(--glass-highlight);
+  box-shadow: var(--glass-control-shadow), 0 0 0 2px color-mix(in srgb, var(--glass-accent) 20%, transparent);
+}
+
+:root :is(.app-shell,.liquid-dialog) .counted-input:not(.counted-textarea) > input:not([hidden]):not([hidden]):not([hidden]):not([hidden]):not([hidden]):not([hidden]) { padding-right: 84px; }
+:root .counted-input:not(.counted-textarea) > span {
+  top: 50%;
+  bottom: auto;
+  right: 22px;
+  translate: 0 -50%;
+  line-height: 1;
+}
+:root .counted-input.counted-textarea > span { right: 22px; bottom: 16px; }
+:root .collection-modal .counted-textarea textarea:not([hidden]):not([hidden]):not([hidden]):not([hidden]):not([hidden]) { padding-bottom: 40px; }
+
+:root .glass-select > .glass-select-trigger {
+  min-height: 50px;
+  padding: 12px 18px 12px 22px;
+  gap: 16px;
+  border-radius: 999px;
+  line-height: 1.5;
+  background: var(--glass-sheen), var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-control-shadow);
+}
+:root .glass-select-popup.liquid-popover { border-radius: 32px; }
+:root .glass-select-popup .glass-select-option {
+  border-radius: 999px;
+  padding-inline: 18px;
+}
+:root .glass-select-popup .glass-select-group { padding-inline: 18px; }
+
+:root :is(.library-batch-bar,.centre-batch,.recents-bar) {
+  min-height: 60px;
+  padding: 10px 12px 10px 24px;
+  border-radius: 31px;
+  background: var(--glass-sheen), var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-control-shadow);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+}
+:root .recents-bar { padding-left: 12px; }
+:root .library-batch-bar .text-button,
+:root .library-layout .library-batch-bar .text-button,
+:root .centre-batch .text-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 38px;
+  padding: 9px 16px;
+  border-radius: 999px;
+  line-height: 1.4;
+  background: var(--glass-sheen), var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-control-shadow);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+}
+:root .library-batch-bar .text-button:is(.danger,.danger-text) { color: #cf5050; }
+:root .library-batch-bar .text-button:disabled { opacity: .45; }
+:root .library-batch-bar .glass-select { width: min(220px, 100%); }
+:root .library-batch-bar .glass-select > .glass-select-trigger {
+  min-height: 38px;
+  padding: 7px 14px 7px 18px;
+  font-size: 13px;
+}
+
+:root .admin-modal .admin-toolbar .segmented { border-radius: 999px; }
+
+:root .keyword-field:focus-within {
+  border-color: var(--glass-highlight);
+  box-shadow: var(--glass-control-shadow), 0 0 0 2px color-mix(in srgb, var(--glass-accent) 20%, transparent);
+}
+:root .keyword-field > input:focus-visible { outline: none; box-shadow: none; }
+:root .keyword-field {
+  resize: vertical;
+  overflow: auto;
+  align-content: flex-start;
+}
+
+:root .board-icons {
+  padding: 18px 20px 20px;
+  border-radius: 42px;
+  background: var(--glass-sheen), var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-control-shadow);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+}
+:root .board-icons > legend {
+  float: left;
+  width: 100%;
+  margin: 0 0 12px;
+  padding: 0 6px;
+}
+:root .board-icons > legend + * { clear: both; }
+:root .board-icons button.glass-btn { border-radius: 50%; }
+:root .board-icons button.glass-btn.selected {
+  --button-light-core: .12;
+  --button-light-edge: 0;
+  color: var(--glass-selection-text);
+  background: var(--glass-selection-bg);
+  border-color: var(--glass-selection-bg);
+  box-shadow: 0 3px 6px -3px rgb(0 0 0 / .3), 0 8px 22px -12px rgb(0 0 0 / .28);
+}
+
+:root .attachment-picker-row > .text-button.glass-btn,
+:root .attachment-picker-end > .text-button.glass-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 9px 18px;
+  border-radius: 999px;
+  line-height: 1.4;
+  background: var(--glass-sheen), var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-control-shadow);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+}
+:root .attachment-picker-row { gap: 10px; }
+
+:root .composer-modal .publish-settings {
+  display: block;
+  padding: 18px 20px 6px;
+  border-radius: 26px;
+  background: var(--glass-sheen), var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-control-shadow);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+}
+:root .composer-modal .publish-settings > legend {
+  float: left;
+  width: 100%;
+  margin: 0 0 12px;
+  padding: 0 6px;
+}
+:root .composer-modal .publish-settings > legend + * { clear: both; }
+:root .composer-modal .publish-settings .settings-hint,
+:root .composer-modal .publish-settings .form-row { padding-inline: 6px; }
+:root .composer-modal .publish-settings .form-row { margin-bottom: 14px; }
+:root .composer-modal .publish-settings .settings-hint { margin: 0 0 12px; }
+
+:root .composer-modal .composer-footer { padding-bottom: 16px; }
+
+:root .reply-form:not(.chat-form),
+:root .reply-form.nested {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+:root .reply-form.nested { margin-top: 16px; }
+:root :is(.app-shell,.liquid-dialog) .reply-form:not(.chat-form) > textarea:not([hidden]):not([hidden]):not([hidden]):not([hidden]):not([hidden]) {
+  min-height: 140px;
+  padding: 16px 22px;
+}
+:root :is(.app-shell,.liquid-dialog) .reply-form.nested > textarea:not([hidden]):not([hidden]):not([hidden]):not([hidden]):not([hidden]) { min-height: 96px; }
+:root :is(.app-shell,.liquid-dialog) .chat-form > textarea:not([hidden]):not([hidden]):not([hidden]):not([hidden]):not([hidden]) { box-shadow: var(--glass-rim), var(--glass-hairline, 0 0 0 0 transparent); }
+:root :is(.app-shell,.liquid-dialog) .chat-form > textarea:not([hidden]):not([hidden]):not([hidden]):not([hidden]):not([hidden]):focus-visible {
+  box-shadow: var(--glass-rim), 0 0 0 2px color-mix(in srgb, var(--glass-accent) 20%, transparent);
+}
+:root .reply-form-tools { margin-top: 12px; }
+:root .reply-form .button.glass-btn { min-height: 40px; padding: 9px 18px; }
+
+:root .attachment-rows { gap: 10px; padding: 2px; }
+:root .attachment-row {
+  padding: 8px;
+  gap: 8px;
+  border-radius: 999px;
+  background: var(--glass-sheen), var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  box-shadow: none;
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+}
+:root .attachment-row.dragging {
+  border-color: transparent;
+  box-shadow: inset 0 0 0 2px var(--ink);
+}
+:root .attachment-manager-foot .inline-toggle {
+  min-height: 44px;
+  padding: 10px 18px 10px 14px;
+  gap: 10px;
+  border-radius: 999px;
+  cursor: pointer;
+  background: var(--glass-sheen), var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-control-shadow);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+}
+:root .attachment-manager-foot .inline-toggle:has(input:focus-visible) {
+  box-shadow: var(--glass-control-shadow), 0 0 0 2px color-mix(in srgb, var(--glass-accent) 20%, transparent);
+}
+
+:root .attachment-picker .attachment-chip,
+:root .attachment-picker .attachment-chip:hover {
+  gap: 8px;
+  padding: 2px;
+  overflow: visible;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+:root .attachment-picker .attachment-list { gap: 10px; align-items: center; }
+:root .attachment-picker .attachment-manage.glass-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  padding: 9px 18px;
+  border-radius: 999px;
+  line-height: 1.4;
+  background: var(--glass-sheen), var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-control-shadow);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+}
+
+@media (max-width: 600px) {
+  :root :is(.library-batch-bar,.centre-batch) { padding-left: 18px; }
+  :root :is(.app-shell,.liquid-dialog) input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([hidden]):not([hidden]):not(.profile-bio-input):not(:is(.search-input-wrap,.search-page-form,.profile-search,.library-search,.admin-search,.profile-tag-input,.keyword-field) > input),
+  :root :is(.app-shell,.liquid-dialog) textarea:not([hidden]):not([hidden]):not([hidden]):not([hidden]):not([hidden]) { padding-inline: 18px; }
+  :root :is(.app-shell,.liquid-dialog) .counted-input:not(.counted-textarea) > input:not([hidden]):not([hidden]):not([hidden]):not([hidden]):not([hidden]):not([hidden]) { padding-right: 80px; }
+  :root .counted-input > span:not([hidden]):not([hidden]) { right: 18px; }
+  :root .composer-modal .publish-settings { padding-inline: 16px; }
+}
+@media (forced-colors: active) {
+  :root :is(.library-batch-bar,.centre-batch,.recents-bar) {
+    background: Canvas; color: CanvasText; border: 1px solid CanvasText; box-shadow: none;
+  }
+}
+
+:root .board-console .board-team {
+  display: grid;
+  gap: 22px;
+}
+:root .board-console .board-card {
+  margin: 0;
+  padding: 22px 22px 18px;
+  border-radius: 38px;
+  background: var(--glass-sheen), var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-control-shadow);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+}
+:root .board-console .board-card > h4 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 6px 16px;
+  font-size: 1.25rem;
+  font-weight: 650;
+  color: var(--ink);
+}
+:root .board-console .board-card > h4 span {
+  font-size: 0.8125rem;
+  padding: 2px 10px;
+}
+:root .board-console .board-card > .admin-search {
+  width: 100%;
+  margin-bottom: 12px;
+}
+:root .board-console .board-candidates { margin-top: 0; }
+:root .board-console .board-card .glass-pill-row {
+  gap: 10px;
+  margin-bottom: 10px;
+  padding: 7px 8px 7px 7px;
+  border: 1px solid var(--glass-border);
+  border-radius: 999px;
+  background: var(--glass-sheen), var(--glass-bg);
+  box-shadow: var(--glass-control-shadow);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+}
+:root .board-console .glass-pill-row > .text-button {
+  flex-shrink: 0;
+  gap: 6px;
+  min-height: 36px;
+  padding: 7px 14px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+:root .board-console .glass-pill-row > .text-button.glass-btn {
+  gap: 8px;
+  min-height: 38px;
+  padding: 8px 18px;
+  color: var(--glass-text);
+  background: var(--glass-sheen), var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-control-shadow);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+}
+:root .board-console .glass-pill-row > .text-button.member-remove { color: var(--alert, #cf5050); }
+:root .board-console .glass-pill-row > .text-button.glass-btn:disabled { opacity: .5; }
+:root .board-console .board-card .admin-empty { padding: 18px 0 8px; }
+@media (max-width: 640px) {
+  :root .board-console .board-card { padding: 18px 14px 14px; border-radius: 30px; }
+  :root .board-console .board-card .glass-pill-row { border-radius: 26px; padding: 8px; }
+  :root .board-console .glass-pill-row > .text-button { margin-left: auto; }
+}
+
+:root .publish-settings > legend {
+  font-size: 1.0625rem;
+  font-weight: 650;
+  letter-spacing: 0;
+  color: var(--ink);
+}

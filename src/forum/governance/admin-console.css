@@ -1,0 +1,150 @@
+:is(.admin-modal, .admin-confirm-modal, .account-deletion-modal) {
+  --admin-plate: linear-gradient(160deg, rgb(var(--paper-lift-rgb) / .62), rgb(var(--paper-lift-rgb) / .38));
+  --admin-card: linear-gradient(165deg, rgb(var(--paper-lift-rgb) / .96), rgb(var(--paper-lift-rgb) / .78));
+  --admin-control: linear-gradient(170deg, rgb(255 255 255 / .98), rgb(255 255 255 / .84));
+  --admin-edge: rgb(255 255 255 / .96);
+  --admin-hairline: 0 0 0 .5px rgb(0 0 0 / .07);
+  --admin-plate-shadow: var(--glass-rim), var(--admin-hairline), 0 18px 48px -30px rgb(0 0 0 / .28);
+  --admin-card-shadow: var(--glass-rim), var(--admin-hairline), 0 2px 5px -3px rgb(0 0 0 / .12), 0 12px 28px -20px rgb(0 0 0 / .3);
+  --admin-control-shadow: var(--glass-rim), var(--admin-hairline), 0 2px 6px -4px rgb(0 0 0 / .2), 0 6px 16px -12px rgb(0 0 0 / .22);
+}
+
+.admin-modal :is(.admin-overview > div, .admin-row, .admin-grid-head, .admin-notice, .admin-search, .empty-state.compact),
+.account-deletion-modal .account-deletion-counts > div {
+  background: var(--admin-card);
+  border: 1px solid var(--admin-edge);
+  box-shadow: var(--admin-card-shadow);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+}
+.admin-modal .admin-overview { gap: 14px; margin-bottom: 30px; }
+.admin-modal .admin-overview > div { border-radius: 22px; padding: 20px 22px; }
+.admin-modal .admin-overview span { color: var(--secondary); margin-bottom: 14px; }
+.account-deletion-modal .account-deletion-counts { gap: 10px; }
+.account-deletion-modal .account-deletion-counts > div { border-radius: 20px; padding: 14px 8px; }
+
+.admin-modal .admin-toolbar { margin-bottom: 20px; gap: 16px; }
+.admin-modal .admin-toolbar .segmented.segmented {
+  padding: 5px;
+  gap: 4px;
+  border-radius: 999px;
+  background: var(--admin-plate);
+  border: 1px solid var(--admin-edge);
+  box-shadow: var(--admin-plate-shadow);
+  -webkit-backdrop-filter: var(--glass-panel-blur);
+  backdrop-filter: var(--glass-panel-blur);
+}
+.admin-modal .admin-toolbar .segmented > button:not(.selected) { color: var(--secondary); }
+.admin-modal .admin-search { min-height: 46px; padding: 0 16px; border-radius: 999px; }
+.admin-modal .admin-notice { border-radius: 999px; padding: 10px 10px 10px 20px; margin-bottom: 18px; gap: 12px; }
+
+.admin-modal .admin-stage {
+  padding: 14px;
+  border-radius: 30px;
+  background: var(--admin-plate);
+  border: 1px solid var(--admin-edge);
+  box-shadow: var(--admin-plate-shadow);
+  -webkit-backdrop-filter: var(--glass-panel-blur);
+  backdrop-filter: var(--glass-panel-blur);
+}
+.admin-modal .admin-stage > .small-loading { min-height: 160px; display: grid; place-items: center; }
+.admin-modal .admin-empty { padding: 42px 20px; }
+.admin-modal .admin-stage .empty-state.compact { border-radius: 22px; padding: 36px 20px; }
+.admin-modal .sample-label {
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 450;
+  color: var(--secondary);
+  background: var(--admin-control);
+  border: 1px solid var(--admin-edge);
+  box-shadow: var(--admin-hairline);
+}
+.admin-modal .role-pill:not(.role-owner) {
+  padding: 5px 12px;
+  border-radius: 999px;
+  background: var(--admin-control);
+  border: 1px solid var(--admin-edge);
+  box-shadow: var(--admin-control-shadow);
+}
+.admin-modal .role-owner { padding: 5px 12px; border-radius: 999px; }
+.admin-modal .admin-post-main.glass-btn {
+  padding: 4px 0;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  box-shadow: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+.admin-modal .admin-post-main strong { line-height: 1.55; }
+.admin-modal .admin-post-main span { color: var(--secondary); }
+
+:is(.admin-modal, .admin-confirm-modal, .account-deletion-modal) button.admin-action.glass-btn,
+:is(.admin-confirm-modal, .account-deletion-modal) .button.glass-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 38px;
+  margin: 0;
+  padding: 8px 16px;
+  border-radius: 999px;
+  font-size: 12.5px;
+  font-weight: 500;
+  line-height: 1.4;
+  white-space: nowrap;
+  color: var(--glass-text);
+  background: var(--admin-control);
+  border: 1px solid var(--admin-edge);
+  box-shadow: var(--admin-control-shadow);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+}
+:is(.admin-modal, .admin-confirm-modal, .account-deletion-modal) button.admin-action.glass-btn > svg { flex-shrink: 0; }
+:is(.admin-modal, .admin-confirm-modal, .account-deletion-modal) button.glass-btn:is(.admin-action-danger, .danger) {
+  color: var(--alert);
+  background: linear-gradient(170deg, rgb(var(--paper-lift-rgb) / .98), rgb(255 250 249 / .86));
+}
+.admin-confirm-modal button.admin-action-primary.glass-btn { font-weight: 600; color: #000; }
+:is(.admin-modal, .admin-confirm-modal, .account-deletion-modal) button.glass-btn:is(.admin-action, .button)[data-glass-pressed="true"] {
+  background: rgb(246 242 238 / .95);
+}
+@media (hover: hover) and (pointer: fine) {
+  :is(.admin-modal, .admin-confirm-modal, .account-deletion-modal) button.glass-btn:is(.admin-action, .button):not(:disabled):hover {
+    background: var(--paper-peak);
+    box-shadow: var(--glass-rim), var(--admin-hairline), 0 3px 8px -4px rgb(0 0 0 / .22), 0 10px 22px -14px rgb(0 0 0 / .28);
+  }
+}
+.admin-modal .admin-notice > button.admin-action.glass-btn { width: 34px; min-width: 34px; min-height: 34px; padding: 0; margin-left: auto; }
+.admin-modal .load-more.admin-action.glass-btn { display: flex; min-height: 44px; padding-inline: 24px; margin: 18px auto 0; }
+
+.admin-confirm-modal .confirm-icon,
+.account-deletion-modal .account-deletion-icon {
+  width: 50px;
+  height: 50px;
+  border-radius: 18px;
+  color: var(--glass-text);
+  background: var(--admin-control);
+  border: 1px solid var(--admin-edge);
+  box-shadow: var(--admin-control-shadow);
+}
+:is(.admin-confirm-modal .confirm-icon.is-danger, .account-deletion-modal .account-deletion-icon) { color: var(--alert); }
+.admin-confirm-modal .confirm-field { margin-top: 16px; gap: 8px; color: var(--secondary); }
+.admin-confirm-modal .form-error { margin-top: 14px; }
+.admin-confirm-modal .confirm-actions { gap: 10px; }
+.admin-confirm-modal .confirm-actions > button.glass-btn,
+.account-deletion-modal .account-deletion-actions > button.glass-btn { flex: 1 1 0; min-height: 44px; font-size: 13px; }
+
+@media (max-width: 860px) {
+  .admin-modal .admin-stage { padding: 10px; border-radius: 26px; }
+}
+@media (max-width: 600px) {
+  .admin-modal .admin-toolbar .segmented.segmented { border-radius: 26px; padding: 6px; }
+}
+@media (max-width: 480px) {
+  .admin-modal .admin-overview > div { padding: 16px; border-radius: 20px; }
+}
+@media (forced-colors: active) {
+  .admin-modal :is(.admin-stage, .admin-row, .admin-grid-head) { border: 1px solid CanvasText; }
+}

@@ -1,0 +1,140 @@
+.recents-head .text-button.glass-btn {
+  min-height: 36px;
+  padding: 9px 16px;
+  background: var(--glass-sheen), var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-control-shadow);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+}
+
+.recents-bar {
+  border-radius: 30px;
+  padding-inline: 12px;
+}
+
+@media (max-width: 900px) {
+  .profile-page .profile-banner .profile-banner-edit {
+    width: 40px;
+    height: 40px;
+    min-width: 40px;
+    min-height: 40px;
+    padding: 0;
+    justify-content: center;
+    border-radius: 50%;
+  }
+}
+
+:root .profile-page .profile-identity input.profile-bio-input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]) {
+  width: min(420px, 100%);
+  min-height: 0;
+  padding: 5px 12px;
+  line-height: 1.5;
+  font-size: 13px;
+  border-radius: 10px;
+  color: #1a1a1a;
+  caret-color: #1a1a1a;
+  background: var(--paper-peak);
+  border: 1px solid #fff;
+  box-shadow: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  text-shadow: none;
+  outline: none;
+}
+:root .profile-page .profile-identity input.profile-bio-input::placeholder {
+  color: #8a8a8a;
+}
+
+@media (max-width: 600px) {
+  .profile-page .profile-tabs.profile-nav-tabs.fluid-tabs {
+    min-height: 0;
+    padding: 3px;
+    gap: 1px;
+  }
+  .profile-page .profile-tabs.profile-nav-tabs > button {
+    flex: 1 1 0;
+    min-width: 0;
+    min-height: 40px;
+    padding: 5px 9px;
+    gap: 2px;
+    font-size: 10.5px;
+  }
+  .profile-page .profile-tabs.profile-nav-tabs > button > svg {
+    width: 17px;
+    height: 17px;
+  }
+}
+
+.feed-filter-modal .filter-summary {
+  column-gap: 22px;
+  padding: 16px 28px;
+  border-radius: 999px;
+  background: var(--glass-sheen), var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-control-shadow);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+}
+.feed-filter-modal .filter-summary > span {
+  grid-row: 1 / span 2;
+  align-self: center;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: var(--text);
+  white-space: nowrap;
+}
+@media (max-width: 600px) {
+  .feed-filter-modal .filter-summary {
+    column-gap: 16px;
+    padding: 14px 24px;
+  }
+  .feed-filter-modal .filter-summary > span {
+    font-size: 14px;
+  }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .filter-options > button.active,
+  .filter-options > button.active::before {
+    transition-property: color, background-color, border-color, box-shadow, opacity;
+    transition-duration: 0.22s;
+    transition-timing-function: ease;
+  }
+  .filter-options:hover > button.active,
+  .filter-options:hover > button.active::before {
+    transition-delay: 2s;
+  }
+  :root .filter-options:has(> button:hover) > button.active:not(:hover),
+  :root .filter-options:has(> button:hover) > button.active:not(:hover)::before {
+    transition-delay: 0s;
+  }
+}
+
+.feed-filter-modal .filter-date-range { align-items: center; }
+.feed-filter-modal .filter-date-field {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1 1 240px;
+  min-width: 0;
+}
+.feed-filter-modal .filter-date-field > .glass-datetime { flex: 1 1 auto; }
+@media (max-width: 600px) {
+  .feed-filter-modal .filter-date-range { flex-direction: column; align-items: stretch; }
+  .feed-filter-modal .filter-date-range > span[aria-hidden] { display: none; }
+  .feed-filter-modal .filter-date-field { flex-basis: auto; }
+}
+
+.liquid-popover :is(button, [role="menuitem"]),
+.recent-item,
+.search-tags > button {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+.liquid-popover :is(button, [role="menuitem"])::selection,
+.liquid-popover :is(button, [role="menuitem"]) *::selection {
+  background: transparent;
+}

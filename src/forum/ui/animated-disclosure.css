@@ -1,0 +1,96 @@
+.nm-animated-disclosure {
+  min-width: 0;
+}
+
+.nm-animated-disclosure > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 44px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.nm-animated-disclosure > summary::-webkit-details-marker {
+  display: none;
+}
+
+.nm-disclosure-label {
+  min-width: 0;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.nm-animated-disclosure > summary > .nm-disclosure-chevron {
+  flex: 0 0 auto;
+  transform: rotate(-90deg);
+  transition: transform 240ms cubic-bezier(.16, 1, .3, 1);
+}
+
+.nm-animated-disclosure[open] > summary > .nm-disclosure-chevron {
+  transform: rotate(0);
+}
+
+.nm-animated-disclosure[data-disclosure-target="closed"] > summary > .nm-disclosure-chevron {
+  transform: rotate(-90deg);
+}
+
+.nm-animated-disclosure[data-disclosure-target="open"] > summary > .nm-disclosure-chevron {
+  transform: rotate(0);
+}
+
+.nm-animated-disclosure > summary:focus-visible {
+  outline: 2px solid var(--text, currentColor);
+  outline-offset: 3px;
+  border-radius: 12px;
+}
+
+.nm-disclosure-inner {
+  min-width: 0;
+}
+
+.nm-animated-disclosure[data-disclosure-animating] > .nm-disclosure-inner {
+  overflow: hidden;
+  will-change: height;
+}
+
+@supports (overflow: clip) {
+  .nm-animated-disclosure[data-disclosure-animating] > .nm-disclosure-inner {
+    overflow: clip;
+    overflow-clip-margin: 28px;
+  }
+}
+
+@supports (interpolate-size: allow-keywords) and selector(details::details-content) {
+  .nm-animated-disclosure:not([data-disclosure-scripted]) {
+    interpolate-size: allow-keywords;
+  }
+
+  .nm-animated-disclosure:not([data-disclosure-scripted])::details-content {
+    block-size: 0;
+    overflow: clip;
+    overflow-clip-margin: 28px;
+    transition: block-size 280ms cubic-bezier(.16, 1, .3, 1),
+      content-visibility 280ms allow-discrete;
+  }
+
+  .nm-animated-disclosure:not([data-disclosure-scripted])[open]::details-content {
+    block-size: auto;
+  }
+
+  .nm-animated-disclosure[data-disclosure-reduced="true"]::details-content {
+    transition: none;
+  }
+}
+
+.nm-animated-disclosure[data-disclosure-reduced="true"] > summary > .nm-disclosure-chevron {
+  transition: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nm-animated-disclosure::details-content,
+  .nm-animated-disclosure > summary > .nm-disclosure-chevron {
+    transition: none;
+  }
+}

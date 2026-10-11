@@ -1,0 +1,65 @@
+.section-actions > .board-more { position: relative; display: inline-flex; }
+:root .app-shell .section-actions > .board-more > button.button.board-more-trigger.glass-btn {
+  display: grid;
+  place-items: center;
+  width: var(--control-h, 44px);
+  min-width: var(--control-h, 44px);
+  height: var(--control-h, 44px);
+  min-height: var(--control-h, 44px);
+  padding: 0;
+  border-radius: 50%;
+  color: var(--glass-text);
+}
+:root .app-shell .section-actions > .board-more > button.board-more-trigger.glass-btn[aria-expanded="true"] {
+  color: #000;
+  background-color: var(--glass-pressed-bg);
+}
+
+.liquid-popover.board-more-menu {
+  min-width: 212px;
+  padding: 8px;
+  border-radius: 26px;
+}
+.liquid-popover.board-more-menu .liquid-menu-item > button > svg { flex-shrink: 0; }
+
+@media (max-width: 600px) {
+  :root .section-actions:has(> .board-more) {
+    grid-template-columns: 40px repeat(2, minmax(0, 1fr)) 40px;
+    grid-auto-flow: row;
+    gap: 8px;
+  }
+  :root .app-shell .section-actions:has(> .board-more) > button.board-bell.glass-btn,
+  :root .app-shell .section-actions:has(> .board-more) > .board-more > button.button.board-more-trigger.glass-btn {
+    width: 40px;
+    min-width: 40px;
+    height: 40px;
+    min-height: 40px;
+  }
+  :root .section-actions:has(> .board-more) > button.board-bell.glass-btn { grid-column: 1; grid-row: 1; }
+  :root .section-actions:has(> .board-more) > button.button.glass-btn:not(.primary) {
+    grid-column: span 1;
+    grid-row: 1;
+    height: 40px;
+    min-height: 40px;
+    padding-inline: 8px;
+    font-size: 12px;
+    gap: 5px;
+  }
+  :root .section-actions:has(> .board-more) > .board-more {
+    grid-column: 4;
+    grid-row: 1;
+    justify-self: end;
+  }
+  :root .section-actions:has(> .board-more) > button.button.primary.glass-btn {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+}
+@media (max-width: 390px) {
+  :root .section-actions:has(> .board-more) { gap: 7px; }
+  :root .section-actions:has(> .board-more) > button.button.glass-btn:not(.primary) {
+    padding-inline: 6px;
+    font-size: 11px;
+    gap: 4px;
+  }
+}

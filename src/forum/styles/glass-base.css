@@ -1,0 +1,77 @@
+:root {
+  color-scheme: light;
+  --glass-bg: rgb(var(--paper-lift-rgb) / .65);
+  --glass-pressed-bg: rgb(var(--paper-lift-rgb) / .5);
+  --glass-border: rgb(var(--paper-rim-rgb) / .4);
+  --glass-highlight: rgb(var(--paper-rim-rgb) / .5);
+  --glass-text: #212121;
+  --glass-blur: blur(20px) saturate(180%);
+  --glass-shadow: 0 8px 32px rgba(0,0,0,.12), 0 2px 8px rgba(0,0,0,.06);
+  --glass-ease: cubic-bezier(.34,1.56,.64,1);
+  --glass-radius: 24px;
+}
+.glass-btn,
+.glass-popup {
+  color: var(--glass-text);
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  box-shadow: inset 0 1px 0 var(--glass-highlight), var(--glass-shadow);
+}
+.glass-popup { border-radius: var(--glass-radius); }
+.glass-btn {
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background-color .1s ease, border-color .2s ease;
+}
+@media (hover: hover) and (pointer: fine) {
+  .glass-btn:not([data-liquid-button]):not(:disabled):not([aria-disabled="true"]):hover {
+    scale: 1.02;
+  }
+}
+.glass-btn:not([data-liquid-button]):not(:disabled):not([aria-disabled="true"]):is(:active,.is-pressed) {
+  scale: .92;
+  background: var(--glass-pressed-bg);
+  transition-duration: .1s;
+  will-change: transform;
+}
+.glass-btn:not([data-liquid-button]).is-releasing {
+  animation: glass-release .4s var(--glass-ease) both;
+  will-change: transform;
+}
+.glass-btn:focus-visible {
+  outline: 2px solid var(--glass-accent, #2c2c2e);
+  outline-offset: -4px;
+}
+.glass-btn:disabled, .glass-btn[aria-disabled="true"] {
+  opacity: .45;
+  cursor: default;
+  animation: none;
+  scale: 1;
+}
+@keyframes glass-release {
+  0% { scale: .92; }
+  65% { scale: 1.02; }
+  100% { scale: 1; }
+}
+.glass-popup { transform-origin: var(--popup-origin, top center); }
+@keyframes glass-popup-enter {
+  0% { transform: scale(.85); opacity: 0; }
+  75% { scale: 1.02; opacity: 1; }
+  100% { scale: 1; opacity: 1; }
+}
+@keyframes glass-popup-exit {
+  from { scale: 1; opacity: 1; }
+  to { transform: scale(.85); opacity: 0; }
+}
+@keyframes glass-dim { from { opacity: 0; } to { opacity: .2; } }
+@media (prefers-reduced-motion: reduce) {
+  .glass-btn,
+.glass-popup {
+    animation: none !important;
+    transition: none !important;
+    will-change: auto !important;
+  }
+  .glass-btn { scale: 1 !important; }
+}

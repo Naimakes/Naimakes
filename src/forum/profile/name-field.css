@@ -1,0 +1,22 @@
+.name-status-slot { margin-top: -9px; min-width: 0; }
+.name-status-clip { overflow: hidden; }
+.name-status {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  padding-top: 9px;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.6;
+  color: var(--secondary);
+  overflow-wrap: anywhere;
+}
+.name-status > svg { flex: 0 0 auto; margin-top: 3px; }
+.name-status.is-taken { color: #913745; }
+.modal input[aria-invalid="true"] {
+  border-color: color-mix(in srgb, #a33f50 42%, var(--border));
+  transition: border-color .22s ease;
+}
+@media (prefers-reduced-motion: reduce) {
+  .modal input[aria-invalid="true"] { transition: none; }
+}

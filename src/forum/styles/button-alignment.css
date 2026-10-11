@@ -1,0 +1,75 @@
+.confirm-actions,
+.library-form-actions,
+.account-deletion-actions {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  align-items: stretch;
+}
+:is(.confirm-actions, .library-form-actions, .account-deletion-actions) > button.glass-btn {
+  width: 100%;
+  min-width: 0;
+  flex: none;
+}
+.filter-actions > div,
+.glass-datetime-actions > div {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(96px, 1fr);
+  gap: 10px;
+}
+:is(.filter-actions, .glass-datetime-actions) > div > button.glass-btn { width: 100%; }
+
+.feed-filter-modal .filter-options {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(118px, 1fr));
+  gap: 8px;
+}
+.feed-filter-modal .filter-options > button.glass-btn { width: 100%; min-width: 0; padding-inline: 10px; justify-content: center; white-space: nowrap; }
+
+.centre-modal .centre-actions {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(112px, 1fr));
+  gap: 8px;
+}
+.centre-modal .centre-actions > button.glass-btn { width: 100%; justify-content: center; }
+
+.section-actions,
+.profile-actions { display: flex; align-items: center; }
+:is(.section-actions, .profile-actions) > button.button.glass-btn {
+  min-width: 124px;
+  justify-content: center;
+}
+
+@media (max-width: 600px) {
+  .section-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+  }
+  .section-actions > button.button.glass-btn { width: 100%; min-width: 0; }
+  .section-actions:has(> .icon-button) { grid-template-columns: 44px repeat(2, minmax(0, 1fr)); }
+  .section-actions > button.icon-button.glass-btn { grid-row: span 2; align-self: center; justify-self: start; }
+  .section-actions > button.button.primary.glass-btn { grid-column: 1 / -1; }
+  .section-actions:has(> .icon-button) > button.button.primary.glass-btn { grid-column: 2 / -1; }
+  .profile-actions > button.button.glass-btn { min-width: 0; }
+
+  .detail-action-bar {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+    align-items: center;
+  }
+  .detail-action-bar > button.button.glass-btn { width: 100%; justify-content: center; }
+  .detail-action-bar > .text-button { grid-column: 1; justify-self: start; }
+  .detail-action-bar > .detail-action-extra { grid-column: 2 / -1; justify-self: end; margin-left: 0; }
+
+  .filter-actions > div,
+  .glass-datetime-actions > div { grid-auto-columns: minmax(0, 1fr); }
+  .feed-filter-modal .filter-options { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .feed-filter-modal .filter-options > button.glass-btn { padding-inline: 6px; }
+}
+@media (max-width: 360px) {
+  .confirm-actions,
+  .account-deletion-actions { grid-auto-flow: row; }
+}
