@@ -144,6 +144,16 @@ export function updatePrefs(patch: Partial<AssistantPrefs>) {
   emit();
 }
 
+// Takes prefs the server already saved (e.g. changed by Naimakes) without pushing them back.
+export function adoptPrefs(next: Partial<AssistantPrefs>, at: number) {
+  clearTimeout(pushTimer);
+  prefs = { ...defaultPrefs, ...clean(next) };
+  updatedAt = at;
+  sync = { state: "done", at: Date.now() };
+  persist();
+  emit();
+}
+
 export function resetPrefs() {
   updatePrefs({ ...defaultPrefs });
 }
