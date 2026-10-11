@@ -5,6 +5,15 @@ import { db } from "./database.mjs";
 import { plainText } from "./rich-text.mjs";
 
 db.exec(`
+CREATE TABLE IF NOT EXISTS assistant_chats (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  title TEXT NOT NULL DEFAULT '',
+  messages TEXT NOT NULL DEFAULT '[]',
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS assistant_chats_user ON assistant_chats(user_id, updated_at DESC);
 CREATE TABLE IF NOT EXISTS assistant_prefs (
   user_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
   prefs TEXT NOT NULL DEFAULT '{}',
@@ -315,6 +324,48 @@ function readMessages(body) {
   return kept;
 }
 
+const CHAT_ID = /^[a-z0-9]{6,40}$/;
+const MAX_SAVED_CHATS = 100;
+const MAX_SAVED_MESSAGES = 40;
+
+function sanitizeSources(list) {
+  if (!Array.isArray(list)) return undefined;
+  const text = (v, n) => (typeof v === "string" ? v.slice(0, n) : "");
+  const out = list
+    .filter((s) => s && typeof s === "object")
+    .slice(0, 8)
+    .map((s) => ({ type: text(s.type, 20), id: text(s.id, 80), title: text(s.title, 200), url: text(s.url, 300), board: text(s.board, 80), excerpt: text(s.excerpt, 300) }));
+  return out.length ? out : undefined;
+}
+
+function sanitizeSavedChat(body) {
+  const list = Array.isArray(body?.messages) ? body.messages.slice(-MAX_SAVED_MESSAGES) : [];
+  const messages = [];
+  for (const m of list) {
+    if (!m || (m.role !== "user" && m.role !== "assistant") || typeof m.content !== "string" || !m.content.trim()) continue;
+    const item = {
+      id: typeof m.id === "string" ? m.id.slice(0, 40) : Math.random().toString(36).slice(2, 10),
+      role: m.role,
+      content: m.content.slice(0, 20000),
+      at: Number.isFinite(m.at) ? m.at : Date.now(),
+    };
+    const sources = sanitizeSources(m.sources);
+    if (sources) item.sources = sources;
+    if (m.offline === true) item.offline = true;
+    if (Array.isArray(m.files)) {
+      const files = m.files
+        .filter((f) => f && typeof f.name === "string" && ["image", "pdf", "text"].includes(f.kind))
+        .slice(0, 3)
+        .map((f) => ({ name: f.name.slice(0, 80), kind: f.kind }));
+      if (files.length) item.files = files;
+    }
+    messages.push(item);
+  }
+  if (!messages.length) return null;
+  const title = typeof body.title === "string" ? body.title.trim().slice(0, 60) : "";
+  return { title, messages };
+}
+
 const imageTypes = new Set(["image/jpeg", "image/png", "image/gif", "image/webp"]);
 const MAX_FILES = 3;
 const looksBase64 = (data) => /^[A-Za-z0-9+/=]+$/.test(data.slice(0, 2048));
@@ -410,7 +461,57 @@ export function installAssistant(app, { auth, liveClause }) {
     message: { error: "今天的提问次数已用完，明天再来吧。" },
   });
 
-  const titleModel = process.env.ASSISTANT_TITLE_MODEL || "claude-haiku-5-5";
+  const saveLimiter = rateLimit({
+    windowMs: 60000,
+    limit: 60,
+    standardHeaders: "draft-8",
+    legacyHeaders: false,
+    message: { error: "保存太频繁了，请稍后再试。" },
+  });
+
+  app.get("/api/assistant/chats", auth, (req, res) => {
+    const chats = db
+      .prepare("SELECT id,title,updated_at FROM assistant_chats WHERE user_id=? ORDER BY updated_at DESC LIMIT ?")
+      .all(req.user.id, MAX_SAVED_CHATS);
+    res.json({ chats });
+  });
+
+  app.get("/api/assistant/chats/:id", auth, (req, res) => {
+    const row = db.prepare("SELECT id,title,messages,updated_at FROM assistant_chats WHERE id=? AND user_id=?").get(req.params.id, req.user.id);
+    if (!row) return res.status(404).json({ error: "没有找到这段对话。" });
+    let messages = [];
+    try {
+      messages = JSON.parse(row.messages);
+    } catch {}
+    res.json({ id: row.id, title: row.title, updated_at: row.updated_at, messages });
+  });
+
+  app.put("/api/assistant/chats/:id", auth, saveLimiter, (req, res) => {
+    if (!CHAT_ID.test(req.params.id)) return res.status(400).json({ error: "对话编号无效。" });
+    const chat = sanitizeSavedChat(req.body);
+    if (!chat) return res.status(400).json({ error: "对话内容为空。" });
+    const now = Date.now();
+    const result = db
+      .prepare(
+        `INSERT INTO assistant_chats(id,user_id,title,messages,created_at,updated_at) VALUES(?,?,?,?,?,?)
+         ON CONFLICT(id) DO UPDATE SET title=excluded.title,messages=excluded.messages,updated_at=excluded.updated_at
+         WHERE assistant_chats.user_id=excluded.user_id`,
+      )
+      .run(req.params.id, req.user.id, chat.title, JSON.stringify(chat.messages), now, now);
+    if (!result.changes) return res.status(404).json({ error: "没有找到这段对话。" });
+    db.prepare(
+      `DELETE FROM assistant_chats WHERE user_id=? AND id NOT IN
+       (SELECT id FROM assistant_chats WHERE user_id=? ORDER BY updated_at DESC LIMIT ?)`,
+    ).run(req.user.id, req.user.id, MAX_SAVED_CHATS);
+    res.json({ id: req.params.id, title: chat.title, updated_at: now });
+  });
+
+  app.delete("/api/assistant/chats/:id", auth, (req, res) => {
+    db.prepare("DELETE FROM assistant_chats WHERE id=? AND user_id=?").run(req.params.id, req.user.id);
+    res.json({ ok: true });
+  });
+
+  const titleModel =process.env.ASSISTANT_TITLE_MODEL || "claude-haiku-5-5";
   app.post("/api/assistant/title", chatLimiter, express.json({ limit: "64kb" }), async (req, res) => {
     const clip = (v) => (typeof v === "string" ? v.trim().slice(0, 600) : "");
     const question = clip(req.body?.question);

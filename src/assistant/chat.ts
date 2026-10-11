@@ -13,11 +13,23 @@ export type ChatMessage = {
   at: number;
 };
 export type Phase = "idle" | "searching" | "writing";
-type ChatState = { messages: ChatMessage[]; phase: Phase; unread: boolean; title: string };
+export type HistoryItem = { id: string; title: string; updated_at: number };
+type ChatState = {
+  messages: ChatMessage[];
+  phase: Phase;
+  unread: boolean;
+  title: string;
+  id: string;
+  signedIn: boolean;
+  history: HistoryItem[] | null;
+  historyError: string;
+};
 
 const LIMIT = 40;
 let owner = "guest";
-let state: ChatState = { messages: load(owner), phase: "idle", unread: false, title: loadTitle(owner) };
+const keyOf = (id: string) => "nmk-assistant-chat:" + id;
+const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
+let state: ChatState = fresh(owner);
 let controller: AbortController | null = null;
 const sent = new Map<string, Attachment[]>();
 const listeners = new Set<() => void>();
@@ -25,7 +37,6 @@ const subscribe = (fn: () => void) => {
   listeners.add(fn);
   return () => listeners.delete(fn);
 };
-const keyOf = (id: string) => "nmk-assistant-chat:" + id;
 
 function load(id: string): ChatMessage[] {
   try {
@@ -35,6 +46,18 @@ function load(id: string): ChatMessage[] {
   } catch {
     return [];
   }
+}
+
+function loadId(id: string): string {
+  try {
+    const stored = localStorage.getItem(keyOf(id) + ":id");
+    if (stored && /^[a-z0-9]{6,40}$/.test(stored)) return stored;
+  } catch {}
+  return uid();
+}
+
+function fresh(id: string): ChatState {
+  return { messages: load(id), phase: "idle", unread: false, title: loadTitle(id), id: loadId(id), signedIn: id !== "guest", history: null, historyError: "" };
 }
 
 function loadTitle(id: string): string {
@@ -50,6 +73,7 @@ function set(next: Partial<ChatState>, save = false) {
   if (save)
     try {
       localStorage.setItem(keyOf(owner), JSON.stringify(state.messages.slice(-LIMIT)));
+      localStorage.setItem(keyOf(owner) + ":id", state.id);
       if (state.title) localStorage.setItem(keyOf(owner) + ":title", state.title);
       else localStorage.removeItem(keyOf(owner) + ":title");
     } catch {}
@@ -59,9 +83,11 @@ function set(next: Partial<ChatState>, save = false) {
 async function summarize(forOwner: string) {
   const first = state.messages.find((m) => m.role === "user");
   const answer = state.messages.find((m) => m.role === "assistant" && !m.error && m.content.trim());
-  if (!first || !answer || state.title) return;
+  if (!first || !answer) return;
+  if (state.title) return push(forOwner);
   const fallback = first.content.trim().replace(/\s+/g, " ");
   set({ title: fallback.length > 14 ? fallback.slice(0, 14) + "…" : fallback }, true);
+  push(forOwner);
   try {
     const response = await fetch("/api/assistant/title", {
       method: "POST",
@@ -71,11 +97,81 @@ async function summarize(forOwner: string) {
     });
     if (!response.ok) return;
     const { title } = (await response.json()) as { title?: string };
-    if (title && owner === forOwner && state.messages.includes(first)) set({ title }, true);
+    if (title && owner === forOwner && state.messages.includes(first)) {
+      set({ title }, true);
+      push(forOwner);
+    }
   } catch {}
 }
 
-const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
+let pushing: Promise<void> = Promise.resolve();
+function push(forOwner: string) {
+  pushing = pushing.then(async () => {
+    if (forOwner === "guest" || forOwner !== owner || !state.messages.length) return;
+    const { id, title } = state;
+    const messages = state.messages
+      .filter((m) => m.content.trim())
+      .slice(-LIMIT)
+      .map(({ error: _error, files, ...m }) => ({ ...m, ...(files?.length ? { files: files.map(({ name, kind }) => ({ name, kind })) } : {}) }));
+    if (!messages.length) return;
+    try {
+      const response = await fetch("/api/assistant/chats/" + id, {
+        method: "PUT",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title, messages }),
+      });
+      if (!response.ok || owner !== forOwner) return;
+      const { updated_at } = (await response.json()) as { updated_at: number };
+      if (state.history) set({ history: [{ id, title, updated_at }, ...state.history.filter((h) => h.id !== id)] });
+    } catch {}
+  });
+}
+
+export async function loadHistory() {
+  if (!state.signedIn) return;
+  const forOwner = owner;
+  set({ historyError: "" });
+  try {
+    const response = await fetch("/api/assistant/chats", { credentials: "same-origin" });
+    if (!response.ok) throw new Error();
+    const { chats } = (await response.json()) as { chats: HistoryItem[] };
+    if (owner === forOwner) set({ history: chats });
+  } catch {
+    if (owner === forOwner) set({ historyError: "历史对话加载失败，请稍后再试。" });
+  }
+}
+
+export async function openChat(id: string) {
+  if (id === state.id) return true;
+  const forOwner = owner;
+  try {
+    const response = await fetch("/api/assistant/chats/" + id, { credentials: "same-origin" });
+    if (!response.ok) throw new Error();
+    const data = (await response.json()) as { id: string; title: string; messages: ChatMessage[] };
+    if (owner !== forOwner) return false;
+    controller?.abort();
+    sent.clear();
+    const messages = Array.isArray(data.messages) ? data.messages.filter((m) => m && typeof m.content === "string").slice(-LIMIT) : [];
+    set({ messages, id: data.id, title: data.title || "", phase: "idle", unread: false }, true);
+    return true;
+  } catch {
+    set({ historyError: "这段对话打开失败，请稍后再试。" });
+    return false;
+  }
+}
+
+export async function removeChat(id: string) {
+  try {
+    const response = await fetch("/api/assistant/chats/" + id, { method: "DELETE", credentials: "same-origin" });
+    if (!response.ok) throw new Error();
+  } catch {
+    set({ historyError: "删除失败，请稍后再试。" });
+    return;
+  }
+  set({ history: state.history ? state.history.filter((h) => h.id !== id) : state.history, historyError: "" });
+  if (id === state.id) clearChat();
+}
 
 export function useChat() {
   return useSyncExternalStore(subscribe, () => state);
@@ -87,13 +183,13 @@ export function switchOwner(id: string | null) {
   controller?.abort();
   sent.clear();
   owner = next;
-  set({ messages: load(owner), phase: "idle", unread: false, title: loadTitle(owner) });
+  set(fresh(owner));
 }
 
 export function clearChat() {
   controller?.abort();
   sent.clear();
-  set({ messages: [], phase: "idle", unread: false, title: "" }, true);
+  set({ messages: [], phase: "idle", unread: false, title: "", id: uid() }, true);
 }
 
 export function markRead() {
@@ -188,7 +284,8 @@ export async function ask(question: string, page: { path: string; title: string;
   } finally {
     if (controller === abort) controller = null;
     set({ phase: "idle", unread: !visible() }, true);
-    if (!abort.signal.aborted) void summarize(owner);
+    if (abort.signal.aborted) push(owner);
+    else void summarize(owner);
   }
 }
 
