@@ -13,11 +13,11 @@ export type ChatMessage = {
   at: number;
 };
 export type Phase = "idle" | "searching" | "writing";
-type ChatState = { messages: ChatMessage[]; phase: Phase; unread: boolean };
+type ChatState = { messages: ChatMessage[]; phase: Phase; unread: boolean; title: string };
 
 const LIMIT = 40;
 let owner = "guest";
-let state: ChatState = { messages: load(owner), phase: "idle", unread: false };
+let state: ChatState = { messages: load(owner), phase: "idle", unread: false, title: loadTitle(owner) };
 let controller: AbortController | null = null;
 const sent = new Map<string, Attachment[]>();
 const listeners = new Set<() => void>();
@@ -37,13 +37,42 @@ function load(id: string): ChatMessage[] {
   }
 }
 
+function loadTitle(id: string): string {
+  try {
+    return localStorage.getItem(keyOf(id) + ":title") || "";
+  } catch {
+    return "";
+  }
+}
+
 function set(next: Partial<ChatState>, save = false) {
   state = { ...state, ...next };
   if (save)
     try {
       localStorage.setItem(keyOf(owner), JSON.stringify(state.messages.slice(-LIMIT)));
+      if (state.title) localStorage.setItem(keyOf(owner) + ":title", state.title);
+      else localStorage.removeItem(keyOf(owner) + ":title");
     } catch {}
   listeners.forEach((fn) => fn());
+}
+
+async function summarize(forOwner: string) {
+  const first = state.messages.find((m) => m.role === "user");
+  const answer = state.messages.find((m) => m.role === "assistant" && !m.error && m.content.trim());
+  if (!first || !answer || state.title) return;
+  const fallback = first.content.trim().replace(/\s+/g, " ");
+  set({ title: fallback.length > 14 ? fallback.slice(0, 14) + "…" : fallback }, true);
+  try {
+    const response = await fetch("/api/assistant/title", {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ question: first.content, answer: answer.content }),
+    });
+    if (!response.ok) return;
+    const { title } = (await response.json()) as { title?: string };
+    if (title && owner === forOwner && state.messages.includes(first)) set({ title }, true);
+  } catch {}
 }
 
 const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
@@ -58,13 +87,13 @@ export function switchOwner(id: string | null) {
   controller?.abort();
   sent.clear();
   owner = next;
-  set({ messages: load(owner), phase: "idle", unread: false });
+  set({ messages: load(owner), phase: "idle", unread: false, title: loadTitle(owner) });
 }
 
 export function clearChat() {
   controller?.abort();
   sent.clear();
-  set({ messages: [], phase: "idle", unread: false }, true);
+  set({ messages: [], phase: "idle", unread: false, title: "" }, true);
 }
 
 export function markRead() {
@@ -159,6 +188,7 @@ export async function ask(question: string, page: { path: string; title: string;
   } finally {
     if (controller === abort) controller = null;
     set({ phase: "idle", unread: !visible() }, true);
+    if (!abort.signal.aborted) void summarize(owner);
   }
 }
 

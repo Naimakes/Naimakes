@@ -410,6 +410,29 @@ export function installAssistant(app, { auth, liveClause }) {
     message: { error: "今天的提问次数已用完，明天再来吧。" },
   });
 
+  const titleModel = process.env.ASSISTANT_TITLE_MODEL || "claude-haiku-5-5";
+  app.post("/api/assistant/title", chatLimiter, express.json({ limit: "64kb" }), async (req, res) => {
+    const clip = (v) => (typeof v === "string" ? v.trim().slice(0, 600) : "");
+    const question = clip(req.body?.question);
+    const answer = clip(req.body?.answer);
+    if (!question) return res.status(400).json({ error: "缺少对话内容。" });
+    if (!client) return res.json({ title: "" });
+    try {
+      const message = await client.messages.create({
+        model: titleModel,
+        max_tokens: 60,
+        system: "你为一段对话生成简短标题。只输出标题本身：不超过 14 个汉字（英文不超过 6 个词），使用与用户相同的语言，不加引号、句号或任何说明。",
+        messages: [{ role: "user", content: `<question>${question}</question>\n<answer>${answer}</answer>` }],
+      });
+      const block = message.content.find((b) => b.type === "text");
+      const title = (block?.text || "").split("\n")[0].replace(/^["“「『#\s]+|["”」』。.\s]+$/g, "").slice(0, 30);
+      res.json({ title });
+    } catch (error) {
+      console.error("Assistant title error:", error?.message || error);
+      res.json({ title: "" });
+    }
+  });
+
   const bodyLimit = process.env.ASSISTANT_BODY_LIMIT || "512mb";
   app.post("/api/assistant/chat", chatLimiter, dailyLimiter, express.json({ limit: bodyLimit }), async (req, res) => {
     const messages = readMessages(req.body);

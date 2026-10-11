@@ -778,7 +778,9 @@ export default function AssistantDock({ userId }: { userId: string | null }) {
                   </span>
                   <span className="assistant-identity-text">
                     <strong>Naimakes</strong>
-                    <small aria-live="polite">{status}</small>
+                    <small aria-live="polite" title={chat.phase === "idle" ? chat.title : undefined}>
+                      {chat.phase === "idle" && chat.title ? chat.title : status}
+                    </small>
                   </span>
                   <ChevronRight size={16} aria-hidden="true" />
                 </LiquidButton>
