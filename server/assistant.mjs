@@ -1,3 +1,4 @@
+import { randomBytes } from "node:crypto";
 import Anthropic from "@anthropic-ai/sdk";
 import express from "express";
 import rateLimit from "express-rate-limit";
@@ -20,6 +21,21 @@ CREATE TABLE IF NOT EXISTS assistant_prefs (
   updated_at INTEGER NOT NULL
 );
 `);
+{
+  const have = new Set(db.prepare("PRAGMA table_info(assistant_chats)").all().map((c) => c.name));
+  for (const [name, def] of [
+    ["pinned", "INTEGER NOT NULL DEFAULT 0"],
+    ["favorite", "INTEGER NOT NULL DEFAULT 0"],
+    ["hidden", "INTEGER NOT NULL DEFAULT 0"],
+    ["share_token", "TEXT"],
+    ["share_title", "TEXT"],
+    ["share_messages", "TEXT"],
+    ["shared_at", "INTEGER"],
+  ])
+    if (!have.has(name)) db.exec(`ALTER TABLE assistant_chats ADD COLUMN ${name} ${def}`);
+  db.exec("CREATE UNIQUE INDEX IF NOT EXISTS assistant_chats_share ON assistant_chats(share_token) WHERE share_token IS NOT NULL");
+}
+
 
 const shapes = [
   "blob", "pebble", "bean", "egg", "squircle", "tablet", "capsule", "cylinder", "hex",
@@ -471,9 +487,12 @@ export function installAssistant(app, { auth, liveClause }) {
 
   app.get("/api/assistant/chats", auth, (req, res) => {
     const chats = db
-      .prepare("SELECT id,title,updated_at FROM assistant_chats WHERE user_id=? ORDER BY updated_at DESC LIMIT ?")
+      .prepare(
+        `SELECT id,title,updated_at,pinned,favorite,hidden,(share_token IS NOT NULL) AS shared
+         FROM assistant_chats WHERE user_id=? ORDER BY pinned DESC, updated_at DESC LIMIT ?`,
+      )
       .all(req.user.id, MAX_SAVED_CHATS);
-    res.json({ chats });
+    res.json({ chats: chats.map((c) => ({ ...c, pinned: !!c.pinned, favorite: !!c.favorite, hidden: !!c.hidden, shared: !!c.shared })) });
   });
 
   app.get("/api/assistant/chats/:id", auth, (req, res) => {
@@ -501,9 +520,82 @@ export function installAssistant(app, { auth, liveClause }) {
     if (!result.changes) return res.status(404).json({ error: "没有找到这段对话。" });
     db.prepare(
       `DELETE FROM assistant_chats WHERE user_id=? AND id NOT IN
-       (SELECT id FROM assistant_chats WHERE user_id=? ORDER BY updated_at DESC LIMIT ?)`,
+       (SELECT id FROM assistant_chats WHERE user_id=? ORDER BY pinned DESC, favorite DESC, updated_at DESC LIMIT ?)`,
     ).run(req.user.id, req.user.id, MAX_SAVED_CHATS);
     res.json({ id: req.params.id, title: chat.title, updated_at: now });
+  });
+
+  app.patch("/api/assistant/chats/:id", auth, saveLimiter, (req, res) => {
+    const sets = [];
+    const values = [];
+    for (const key of ["pinned", "favorite", "hidden"]) {
+      if (typeof req.body?.[key] === "boolean") {
+        sets.push(`${key}=?`);
+        values.push(req.body[key] ? 1 : 0);
+      }
+    }
+    if (!sets.length) return res.status(400).json({ error: "没有可更新的内容。" });
+    const result = db.prepare(`UPDATE assistant_chats SET ${sets.join(",")} WHERE id=? AND user_id=?`).run(...values, req.params.id, req.user.id);
+    if (!result.changes) return res.status(404).json({ error: "没有找到这段对话。" });
+    res.json({ ok: true });
+  });
+
+  app.post("/api/assistant/chats/:id/share", auth, saveLimiter, (req, res) => {
+    const row = db.prepare("SELECT title,messages,share_token FROM assistant_chats WHERE id=? AND user_id=?").get(req.params.id, req.user.id);
+    if (!row) return res.status(404).json({ error: "没有找到这段对话。" });
+    const token = row.share_token || randomBytes(12).toString("base64url");
+    const now = Date.now();
+    db.prepare("UPDATE assistant_chats SET share_token=?,share_title=?,share_messages=?,shared_at=? WHERE id=? AND user_id=?").run(
+      token,
+      row.title,
+      row.messages,
+      now,
+      req.params.id,
+      req.user.id,
+    );
+    res.json({ token, shared_at: now });
+  });
+
+  app.delete("/api/assistant/chats/:id/share", auth, (req, res) => {
+    db.prepare("UPDATE assistant_chats SET share_token=NULL,share_title=NULL,share_messages=NULL,shared_at=NULL WHERE id=? AND user_id=?").run(
+      req.params.id,
+      req.user.id,
+    );
+    res.json({ ok: true });
+  });
+
+  const sharedRow = (token) =>
+    /^[A-Za-z0-9_-]{10,64}$/.test(token)
+      ? db
+          .prepare(
+            `SELECT c.id,c.user_id,c.share_title AS title,c.share_messages AS messages,c.shared_at,u.name AS author
+             FROM assistant_chats c JOIN users u ON u.id=c.user_id WHERE c.share_token=?`,
+          )
+          .get(token)
+      : null;
+
+  app.get("/api/assistant/shared/:token", auth, (req, res) => {
+    const row = sharedRow(req.params.token);
+    if (!row) return res.status(404).json({ error: "这个分享链接已失效。" });
+    let messages = [];
+    try {
+      messages = JSON.parse(row.messages);
+    } catch {}
+    res.json({ title: row.title || "", messages, shared_at: row.shared_at, author: row.author, mine: row.user_id === req.user.id, chat_id: row.user_id === req.user.id ? row.id : null });
+  });
+
+  app.post("/api/assistant/shared/:token/save", auth, saveLimiter, (req, res) => {
+    const row = sharedRow(req.params.token);
+    if (!row) return res.status(404).json({ error: "这个分享链接已失效。" });
+    if (row.user_id === req.user.id) return res.json({ id: row.id });
+    const id = randomBytes(10).toString("hex");
+    const now = Date.now();
+    db.prepare("INSERT INTO assistant_chats(id,user_id,title,messages,created_at,updated_at) VALUES(?,?,?,?,?,?)").run(id, req.user.id, row.title || "", row.messages, now, now);
+    db.prepare(
+      `DELETE FROM assistant_chats WHERE user_id=? AND id NOT IN
+       (SELECT id FROM assistant_chats WHERE user_id=? ORDER BY pinned DESC, favorite DESC, updated_at DESC LIMIT ?)`,
+    ).run(req.user.id, req.user.id, MAX_SAVED_CHATS);
+    res.json({ id });
   });
 
   app.delete("/api/assistant/chats/:id", auth, (req, res) => {

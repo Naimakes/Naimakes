@@ -13,7 +13,8 @@ export type ChatMessage = {
   at: number;
 };
 export type Phase = "idle" | "searching" | "writing";
-export type HistoryItem = { id: string; title: string; updated_at: number };
+export type HistoryItem = { id: string; title: string; updated_at: number; pinned: boolean; favorite: boolean; hidden: boolean; shared: boolean };
+export type SharedChat = { title: string; messages: ChatMessage[]; shared_at: number; author: string; mine: boolean; chat_id: string | null };
 type ChatState = {
   messages: ChatMessage[];
   phase: Phase;
@@ -123,9 +124,78 @@ function push(forOwner: string) {
       });
       if (!response.ok || owner !== forOwner) return;
       const { updated_at } = (await response.json()) as { updated_at: number };
-      if (state.history) set({ history: [{ id, title, updated_at }, ...state.history.filter((h) => h.id !== id)] });
+      if (state.history) {
+        const before = state.history.find((h) => h.id === id);
+        const entry: HistoryItem = { pinned: false, favorite: false, hidden: false, shared: false, ...before, id, title, updated_at };
+        set({ history: sortHistory([entry, ...state.history.filter((h) => h.id !== id)]) });
+      }
     } catch {}
   });
+}
+
+const sortHistory = (list: HistoryItem[]) => list.slice().sort((a, b) => Number(b.pinned) - Number(a.pinned) || b.updated_at - a.updated_at);
+
+export async function updateChat(id: string, patch: Partial<Pick<HistoryItem, "pinned" | "favorite" | "hidden">>) {
+  const before = state.history;
+  if (!before) return;
+  set({ historyError: "", history: sortHistory(before.map((h) => (h.id === id ? { ...h, ...patch } : h))) });
+  try {
+    const response = await fetch("/api/assistant/chats/" + id, {
+      method: "PATCH",
+      credentials: "same-origin",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(patch),
+    });
+    if (!response.ok) throw new Error();
+  } catch {
+    set({ history: before, historyError: "操作失败，请稍后再试。" });
+  }
+}
+
+export async function shareChat(id: string): Promise<string | null> {
+  try {
+    const response = await fetch("/api/assistant/chats/" + id + "/share", { method: "POST", credentials: "same-origin" });
+    if (!response.ok) throw new Error();
+    const { token } = (await response.json()) as { token: string };
+    if (state.history) set({ history: state.history.map((h) => (h.id === id ? { ...h, shared: true } : h)) });
+    return location.origin + "/?nmk-chat=" + token;
+  } catch {
+    set({ historyError: "分享失败，请稍后再试。" });
+    return null;
+  }
+}
+
+export async function unshareChat(id: string) {
+  try {
+    const response = await fetch("/api/assistant/chats/" + id + "/share", { method: "DELETE", credentials: "same-origin" });
+    if (!response.ok) throw new Error();
+    if (state.history) set({ history: state.history.map((h) => (h.id === id ? { ...h, shared: false } : h)), historyError: "" });
+  } catch {
+    set({ historyError: "取消分享失败，请稍后再试。" });
+  }
+}
+
+export async function fetchShared(token: string): Promise<SharedChat | string> {
+  try {
+    const response = await fetch("/api/assistant/shared/" + encodeURIComponent(token), { credentials: "same-origin" });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) return (data as { error?: string }).error || "这个分享链接打不开。";
+    return data as SharedChat;
+  } catch {
+    return "网络连接失败，请稍后再试。";
+  }
+}
+
+export async function saveShared(token: string): Promise<boolean> {
+  try {
+    const response = await fetch("/api/assistant/shared/" + encodeURIComponent(token) + "/save", { method: "POST", credentials: "same-origin" });
+    if (!response.ok) return false;
+    const { id } = (await response.json()) as { id: string };
+    await loadHistory();
+    return openChat(id);
+  } catch {
+    return false;
+  }
 }
 
 export async function loadHistory() {
@@ -136,7 +206,7 @@ export async function loadHistory() {
     const response = await fetch("/api/assistant/chats", { credentials: "same-origin" });
     if (!response.ok) throw new Error();
     const { chats } = (await response.json()) as { chats: HistoryItem[] };
-    if (owner === forOwner) set({ history: chats });
+    if (owner === forOwner) set({ history: sortHistory(chats) });
   } catch {
     if (owner === forOwner) set({ historyError: "历史对话加载失败，请稍后再试。" });
   }

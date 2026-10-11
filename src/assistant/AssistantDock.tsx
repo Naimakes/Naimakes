@@ -8,6 +8,7 @@ import { LiquidButton } from "../forum/motion/LiquidButton";
 import { useMotionPreferences } from "../forum/motion/motion-preferences";
 import AssistantDetails from "./AssistantDetails";
 import AssistantHistory from "./AssistantHistory";
+import AssistantShared from "./AssistantShared";
 import { BotFigure, type BotLook } from "./BotFigure";
 import { accept, MAX_FILES, readAttachment, type Attachment } from "./attachments";
 import { ask, clearChat, markRead, retryLast, stopReply, switchOwner, useChat, type ChatMessage } from "./chat";
@@ -206,14 +207,14 @@ function useTopLayerHost() {
   return host;
 }
 
-export default function AssistantDock({ userId }: { userId: string | null }) {
+export default function AssistantDock({ userId, sharedToken = "" }: { userId: string | null; sharedToken?: string }) {
   const host = useTopLayerHost();
   const prefs = usePrefs();
   const chat = useChat();
   const { reduced } = useMotionPreferences();
   const notify = useNotify();
   const [open, setOpen] = useState(false);
-  const [view, setView] = useState<"chat" | "details" | "history">("chat");
+  const [view, setView] = useState<"chat" | "details" | "history" | "shared">("chat");
   const [settled, setSettled] = useState<"success" | "error" | null>(null);
   const [box, setBox] = useState<Box | null>(null);
   const [mood, setMood] = useState("idle");
@@ -444,6 +445,17 @@ export default function AssistantDock({ userId }: { userId: string | null }) {
       .then((r) => setAiReady(!!r.ai))
       .catch(() => setAiReady(null));
   }, [layoutPanel]);
+
+  useEffect(() => {
+    if (!sharedToken) return;
+    try {
+      const url = new URL(location.href);
+      url.searchParams.delete("nmk-chat");
+      history.replaceState(history.state, "", url.pathname + url.search + url.hash);
+    } catch {}
+    setView("shared");
+    openPanel();
+  }, [sharedToken, openPanel]);
 
   const closePanel = useCallback(() => {
     setOpen(false);
@@ -953,6 +965,28 @@ export default function AssistantDock({ userId }: { userId: string | null }) {
                     onBack={() => setView("chat")}
                     onClose={() => { stopReply(); closePanel(); markRead(); }}
                     onOpened={() => {
+                      setView("chat");
+                      requestAnimationFrame(() => input.current?.focus({ preventScroll: true }));
+                    }}
+                  />
+                </motion.div>
+              )}
+              {view === "shared" && sharedToken && (
+                <motion.div
+                  key="shared"
+                  className="assistant-layer"
+                  initial={{ opacity: 0, x: shift }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: shift }}
+                  transition={reduced ? { duration: 0.01 } : { type: "spring", stiffness: 380, damping: 36 }}
+                >
+                  <AssistantShared
+                    token={sharedToken}
+                    Message={Message}
+                    onLink={follow}
+                    onBack={() => setView("chat")}
+                    onClose={() => { stopReply(); closePanel(); markRead(); }}
+                    onSaved={() => {
                       setView("chat");
                       requestAnimationFrame(() => input.current?.focus({ preventScroll: true }));
                     }}
