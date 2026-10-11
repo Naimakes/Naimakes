@@ -614,6 +614,7 @@ export function installAssistant(app, { auth, liveClause }) {
       const message = await client.messages.create({
         model: titleModel,
         max_tokens: 60,
+        thinking: { type: "disabled" },
         system: "你为一段对话生成简短标题。只输出标题本身：不超过 14 个汉字（英文不超过 6 个词），使用与用户相同的语言，不加引号、句号或任何说明。",
         messages: [{ role: "user", content: `<question>${question}</question>\n<answer>${answer}</answer>` }],
       });

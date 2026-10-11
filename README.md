@@ -60,7 +60,9 @@ npm start                # 启动 API 服务（同时托管 dist/）
 | `PORT` / `HOST` | API 监听端口与地址 |
 | `DATA_DIR` | 数据目录 |
 | `ANTHROPIC_API_KEY` | AI 助手所需密钥，留空则不启用 |
-| `ASSISTANT_MODEL` / `ASSISTANT_EFFORT` | 助手使用的模型与推理强度 |
+| `ANTHROPIC_BASE_URL` | 兼容 Anthropic 接口的服务地址，留空使用 Claude 官方；用 DeepSeek 时填 `https://api.deepseek.com/anthropic` |
+| `ASSISTANT_MODEL` / `ASSISTANT_EFFORT` | 助手使用的模型与推理强度（DeepSeek V4.1 Flash 填 `deepseek-flash`） |
+| `ASSISTANT_TITLE_MODEL` | 生成对话标题的轻量模型 |
 | `ASSISTANT_RATE_LIMIT` / `ASSISTANT_DAILY_LIMIT` | 助手的频率与每日用量限制 |
 
 ## 部署（Docker Compose）
