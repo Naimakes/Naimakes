@@ -29,10 +29,20 @@ const empty: Record<Tab, string> = {
   hidden: "没有被隐藏的对话。",
 };
 
-export default function AssistantHistory({ onBack, onClose, onOpened }: { onBack: () => void; onClose: () => void; onOpened: () => void }) {
+export default function AssistantHistory({
+  onBack,
+  onClose,
+  onOpened,
+  onShare,
+}: {
+  onBack: () => void;
+  onClose: () => void;
+  onOpened: () => void;
+  onShare: (chat: { id: string; title: string; count: number }) => void;
+}) {
   const { history, historyError, signedIn, id } = useChat();
   const [tab, setTab] = useState<Tab>("all");
-  const [link, setLink] = useState<{ id: string; url: string; copied: boolean } | null>(null);
+  const [panel, setPanel] = useState<{ id: string; note: string } | null>(null);
 
   useEffect(() => {
     void loadHistory();
@@ -50,10 +60,10 @@ export default function AssistantHistory({ onBack, onClose, onOpened }: { onBack
       return false;
     }
   };
-  const share = async (item: HistoryItem) => {
-    if (link?.id === item.id) return setLink(null);
+  const copyLink = async (item: HistoryItem) => {
     const url = await shareChat(item.id);
-    if (url) setLink({ id: item.id, url, copied: await copy(url) });
+    if (!url) return;
+    setPanel({ id: item.id, note: (await copy(url)) ? "链接已复制。" : url });
   };
 
   const list = history?.filter((item) => visibleIn(tab, item)) ?? [];
@@ -109,7 +119,7 @@ export default function AssistantHistory({ onBack, onClose, onOpened }: { onBack
                       <LiquidButton type="button" className={"icon-button assistant-icon" + (item.favorite ? " is-on" : "")} aria-pressed={item.favorite} aria-label={(item.favorite ? "取消收藏：" : "收藏：") + name} title={item.favorite ? "取消收藏" : "收藏"} onClick={() => updateChat(item.id, { favorite: !item.favorite })}>
                         <Star size={15} />
                       </LiquidButton>
-                      <LiquidButton type="button" className={"icon-button assistant-icon" + (item.shared ? " is-on" : "")} aria-label={"分享：" + name} title="分享给其他用户" onClick={() => share(item)}>
+                      <LiquidButton type="button" className={"icon-button assistant-icon" + (item.shared ? " is-on" : "")} aria-label={"分享：" + name} title="分享给其他用户" onClick={() => setPanel(panel?.id === item.id ? null : { id: item.id, note: "" })}>
                         <Share2 size={15} />
                       </LiquidButton>
                       <LiquidButton type="button" className="icon-button assistant-icon" aria-label={(item.hidden ? "取消隐藏：" : "隐藏：") + name} title={item.hidden ? "取消隐藏" : "隐藏"} onClick={() => updateChat(item.id, { hidden: !item.hidden })}>
@@ -127,30 +137,23 @@ export default function AssistantHistory({ onBack, onClose, onOpened }: { onBack
                         <Trash2 size={15} />
                       </LiquidButton>
                     </div>
-                    {link?.id === item.id && (
+                    {panel?.id === item.id && (
                       <div className="assistant-history-share">
-                        <p>{link.copied ? "链接已复制。" : "复制下面的链接发给其他用户："}拿到链接的登录用户可以查看这段对话的当前内容，之后的新消息不会同步。</p>
-                        <input readOnly value={link.url} onFocus={(event) => event.currentTarget.select()} aria-label="分享链接" />
+                        <p>{panel.note || "分享的是此刻这段对话的快照，之后的新消息不会同步；只有登录用户能打开。"}</p>
                         <div>
-                          <button type="button" onClick={async () => setLink({ ...link, copied: await copy(link.url) })}>复制链接</button>
-                          <button
-                            type="button"
-                            onClick={async () => {
-                              const url = await shareChat(item.id);
-                              if (url) setLink({ id: item.id, url, copied: await copy(url) });
-                            }}
-                          >
-                            更新分享内容
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              void unshareChat(item.id);
-                              setLink(null);
-                            }}
-                          >
-                            取消分享
-                          </button>
+                          <button type="button" onClick={() => copyLink(item)}>复制分享链接</button>
+                          <button type="button" onClick={() => onShare({ id: item.id, title: item.title, count: item.count })}>发给站内成员</button>
+                          {item.shared && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                void unshareChat(item.id);
+                                setPanel(null);
+                              }}
+                            >
+                              取消分享
+                            </button>
+                          )}
                         </div>
                       </div>
                     )}

@@ -4,6 +4,7 @@ import express from "express";
 import rateLimit from "express-rate-limit";
 import { db } from "./database.mjs";
 import { plainText } from "./rich-text.mjs";
+import { shareAssistantChat } from "./sharing.mjs";
 
 db.exec(`
 CREATE TABLE IF NOT EXISTS assistant_chats (
@@ -488,7 +489,7 @@ export function installAssistant(app, { auth, liveClause }) {
   app.get("/api/assistant/chats", auth, (req, res) => {
     const chats = db
       .prepare(
-        `SELECT id,title,updated_at,pinned,favorite,hidden,(share_token IS NOT NULL) AS shared
+        `SELECT id,title,updated_at,pinned,favorite,hidden,json_array_length(messages) AS count,(share_token IS NOT NULL) AS shared
          FROM assistant_chats WHERE user_id=? ORDER BY pinned DESC, updated_at DESC LIMIT ?`,
       )
       .all(req.user.id, MAX_SAVED_CHATS);
@@ -541,19 +542,9 @@ export function installAssistant(app, { auth, liveClause }) {
   });
 
   app.post("/api/assistant/chats/:id/share", auth, saveLimiter, (req, res) => {
-    const row = db.prepare("SELECT title,messages,share_token FROM assistant_chats WHERE id=? AND user_id=?").get(req.params.id, req.user.id);
-    if (!row) return res.status(404).json({ error: "没有找到这段对话。" });
-    const token = row.share_token || randomBytes(12).toString("base64url");
-    const now = Date.now();
-    db.prepare("UPDATE assistant_chats SET share_token=?,share_title=?,share_messages=?,shared_at=? WHERE id=? AND user_id=?").run(
-      token,
-      row.title,
-      row.messages,
-      now,
-      req.params.id,
-      req.user.id,
-    );
-    res.json({ token, shared_at: now });
+    const shared = shareAssistantChat(req.user.id, req.params.id);
+    if (!shared) return res.status(404).json({ error: "没有找到这段对话。" });
+    res.json({ token: shared.token, shared_at: shared.shared_at });
   });
 
   app.delete("/api/assistant/chats/:id/share", auth, (req, res) => {

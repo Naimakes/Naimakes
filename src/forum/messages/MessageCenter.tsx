@@ -116,8 +116,10 @@ const threadPreview = (t: MessageThread) => {
       ? `［分享了「${t.last.quotes[0].title}」］`
       : share
         ? isShareUnavailable(share)
-          ? `［分享了一个${share.type === "board" ? "版块" : "收藏夹"}］`
-          : share.type === "collection" || share.type === "board"
+          ? `［分享了一个${share.type === "board" ? "版块" : share.type === "assistant" ? "对话" : "收藏夹"}］`
+          : share.type === "assistant"
+            ? `［分享了对话「${share.title || "未命名对话"}」］`
+            : share.type === "collection" || share.type === "board"
             ? `［分享了${share.type === "board" ? "版块" : "收藏夹"}「${share.name}」］`
             : `［转发了一条${share.type === "message" ? "私信" : "通知"}］`
         : `［${t.last.attachments.length} 个附件］`);

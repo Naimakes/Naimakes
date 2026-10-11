@@ -2,6 +2,7 @@ import { LiquidButton } from "../motion/LiquidButton";
 import {
   ArrowUpRight,
   Bell,
+  Bot,
   FileX2,
   Folder,
   FolderHeart,
@@ -15,7 +16,7 @@ import Avatar from "../ui/Avatar";
 import { boardIcon } from "../boards/Boards";
 import { QuoteCard } from "../posts/Quotes";
 import { isShareUnavailable, timeAgo, type ShareCardData, type ShareUnavailable } from "../api";
-import type { ShareTarget } from "./share-api";
+import { openSharedChat, type ShareTarget } from "./share-api";
 
 type Open = {
   onOpenCollection?: (id: string) => void;
@@ -37,7 +38,7 @@ function Unavailable({ card }: { card: ShareUnavailable }) {
       <div className="quote-card-open share-card-static">
         <span className="quote-card-top">
           <FileX2 size={15} />
-          <Mark icon={card.type === "board" ? <LayoutGrid size={12} /> : <FolderHeart size={12} />} label={card.type === "board" ? "版块" : "收藏夹"} />
+          <Mark icon={card.type === "board" ? <LayoutGrid size={12} /> : card.type === "assistant" ? <Bot size={12} /> : <FolderHeart size={12} />} label={card.type === "board" ? "版块" : card.type === "assistant" ? "对话" : "收藏夹"} />
         </span>
         <strong className="quote-card-title">{card.unavailable}</strong>
       </div>
@@ -130,6 +131,26 @@ export function ShareCardView({ card, onOpenCollection, onOpenBoard }: { card: S
       </div>
     );
   }
+  if (card.type === "assistant")
+    return (
+      <div className="quote-card share-card share-card-assistant">
+        <LiquidButton type="button" className="quote-card-open" onClick={() => openSharedChat(card.id)}>
+          <span className="quote-card-top">
+            {card.owner && <Avatar name={card.owner.name} initials={card.owner.initials} avatar={card.owner.avatar || ""} />}
+            <span className="quote-card-author">{card.owner?.name || "Naimakes 对话"}</span>
+            <span className="meta-dot">·</span>
+            <span>{timeAgo(card.shared_at)}</span>
+            <Mark icon={<Bot size={12} />} label="对话" />
+          </span>
+          <strong className="quote-card-title">{card.title || "未命名对话"}</strong>
+          <span className="quote-card-foot">
+            <span className="quote-card-board">{card.count} 条消息</span>
+            <span className="quote-card-stats">查看对话</span>
+            <ArrowUpRight size={14} />
+          </span>
+        </LiquidButton>
+      </div>
+    );
   if (card.type === "message")
     return (
       <div className="quote-card share-card share-card-message">
@@ -219,6 +240,12 @@ export function SharePreview({ target, categoryName }: { target: ShareTarget; ca
       />
     );
   }
+  if (target.type === "assistant")
+    return (
+      <ShareCardView
+        card={{ type: "assistant", id: target.chat.id, title: target.chat.title, count: target.chat.count, shared_at: target.chat.shared_at || Date.now(), owner: null }}
+      />
+    );
   if (target.type === "message") {
     const m = target.message;
     return (

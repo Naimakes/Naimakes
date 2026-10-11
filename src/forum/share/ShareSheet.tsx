@@ -14,6 +14,7 @@ const headings: Record<ShareTarget["type"], string> = {
   board: "邀请合适的人，来这个版块看看。",
   message: "把这段话，转给合适的人。",
   notice: "把这条通知，转给合适的人。",
+  assistant: "把这段对话，递给合适的人。",
 };
 const reasons: Record<ShareTarget["type"], string> = {
   post: "说说你为什么想让 TA 看到这篇。",
@@ -21,6 +22,7 @@ const reasons: Record<ShareTarget["type"], string> = {
   board: "说说你为什么想邀请 TA 来这里。",
   message: "补充一句前因后果（可留空）。",
   notice: "补充一句说明（可留空）。",
+  assistant: "说说你为什么想让 TA 看看这段对话。",
 };
 const verb = (target: ShareTarget) => (target.type === "message" || target.type === "notice" ? "转发" : "分享");
 
@@ -28,6 +30,7 @@ function shareText(target: ShareTarget) {
   if (target.type === "post") return target.post.title + "\n" + shareUrl(target);
   if (target.type === "collection") return `收藏夹「${target.collection.name}」\n` + shareUrl(target);
   if (target.type === "board") return `版块「${target.board.name}」\n` + shareUrl(target);
+  if (target.type === "assistant") return `Naimakes 对话「${target.chat.title || "未命名对话"}」`;
   if (target.type === "message") return target.message.content;
   return target.notice.text + (target.notice.preview ? "\n" + target.notice.preview : "");
 }
@@ -106,7 +109,7 @@ export default function ShareSheet({
       setBusy(false);
     }
   }
-  const outside = (
+  const outside = target.type === "assistant" ? null : (
     <section className="share-section" aria-label="分享到站外">
       <h3>{url ? "复制链接，分享给站外的人" : "复制文字，发到站外"}</h3>
       <div className="share-link">
@@ -193,6 +196,12 @@ export default function ShareSheet({
       <div className="share-preview">
         <SharePreview target={target} categoryName={categoryName} />
       </div>
+      {target.type === "assistant" && (
+        <p className="share-privacy">
+          <LockKeyhole size={13} />
+          对方会收到这段对话在此刻的快照，只有登录用户能打开，你随时可以在「历史对话」里取消分享。
+        </p>
+      )}
       {(target.type === "message" || target.type === "notice") && (
         <p className="share-privacy">
           <LockKeyhole size={13} />

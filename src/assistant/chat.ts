@@ -13,7 +13,7 @@ export type ChatMessage = {
   at: number;
 };
 export type Phase = "idle" | "searching" | "writing";
-export type HistoryItem = { id: string; title: string; updated_at: number; pinned: boolean; favorite: boolean; hidden: boolean; shared: boolean };
+export type HistoryItem = { id: string; title: string; updated_at: number; pinned: boolean; favorite: boolean; hidden: boolean; shared: boolean; count: number };
 export type SharedChat = { title: string; messages: ChatMessage[]; shared_at: number; author: string; mine: boolean; chat_id: string | null };
 type ChatState = {
   messages: ChatMessage[];
@@ -126,7 +126,7 @@ function push(forOwner: string) {
       const { updated_at } = (await response.json()) as { updated_at: number };
       if (state.history) {
         const before = state.history.find((h) => h.id === id);
-        const entry: HistoryItem = { pinned: false, favorite: false, hidden: false, shared: false, ...before, id, title, updated_at };
+        const entry: HistoryItem = { pinned: false, favorite: false, hidden: false, shared: false, ...before, id, title, updated_at, count: messages.length };
         set({ history: sortHistory([entry, ...state.history.filter((h) => h.id !== id)]) });
       }
     } catch {}

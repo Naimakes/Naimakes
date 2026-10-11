@@ -8,6 +8,7 @@ import { LiquidButton } from "../forum/motion/LiquidButton";
 import { useMotionPreferences } from "../forum/motion/motion-preferences";
 import AssistantDetails from "./AssistantDetails";
 import AssistantHistory from "./AssistantHistory";
+import { openShare } from "../forum/share/share-api";
 import AssistantShared from "./AssistantShared";
 import { BotFigure, type BotLook } from "./BotFigure";
 import { accept, MAX_FILES, readAttachment, type Attachment } from "./attachments";
@@ -207,7 +208,8 @@ function useTopLayerHost() {
   return host;
 }
 
-export default function AssistantDock({ userId, sharedToken = "" }: { userId: string | null; sharedToken?: string }) {
+export default function AssistantDock({ userId, shared = null }: { userId: string | null; shared?: { token: string; nonce: number } | null }) {
+  const [sharedToken, setSharedToken] = useState("");
   const host = useTopLayerHost();
   const prefs = usePrefs();
   const chat = useChat();
@@ -447,7 +449,8 @@ export default function AssistantDock({ userId, sharedToken = "" }: { userId: st
   }, [layoutPanel]);
 
   useEffect(() => {
-    if (!sharedToken) return;
+    if (!shared) return;
+    setSharedToken(shared.token);
     try {
       const url = new URL(location.href);
       url.searchParams.delete("nmk-chat");
@@ -455,7 +458,7 @@ export default function AssistantDock({ userId, sharedToken = "" }: { userId: st
     } catch {}
     setView("shared");
     openPanel();
-  }, [sharedToken, openPanel]);
+  }, [shared, openPanel]);
 
   const closePanel = useCallback(() => {
     setOpen(false);
@@ -962,6 +965,10 @@ export default function AssistantDock({ userId, sharedToken = "" }: { userId: st
                   transition={reduced ? { duration: 0.01 } : { type: "spring", stiffness: 380, damping: 36 }}
                 >
                   <AssistantHistory
+                    onShare={(target) => {
+                      closePanel();
+                      openShare({ type: "assistant", chat: target });
+                    }}
                     onBack={() => setView("chat")}
                     onClose={() => { stopReply(); closePanel(); markRead(); }}
                     onOpened={() => {
