@@ -60,7 +60,7 @@ npm start                # 启动 API 服务（同时托管 dist/）
 | `PORT` / `HOST` | API 监听端口与地址 |
 | `DATA_DIR` | 数据目录 |
 | `ANTHROPIC_API_KEY` | AI 助手所需密钥，留空则不启用 |
-| `ASSISTANT_MODEL` / `ASSISTANT_EFFORT` | 助手使用的模型与推理强度 |
+| `ASSISTANT_MODEL` / `ASSISTANT_EFFORT` | 助手使用的模型，以及未选择思考模式时的默认推理强度 |
 | `ASSISTANT_RATE_LIMIT` / `ASSISTANT_DAILY_LIMIT` | 助手的频率与每日用量限制 |
 
 ## 部署（Docker Compose）
@@ -76,6 +76,18 @@ npm start                # 启动 API 服务（同时托管 dist/）
 4. 部署前可运行 `npm run check:deploy` 检查配置。
 
 数据与备份分别保存在 `forum_data` 与 `forum_backups` 卷中。
+
+## AI 助手的思考模式
+
+用户可在“设置 → Naimakes”或助手对话框里切换思考模式，选择会同步到账户：
+
+| 档位 | 推理强度 |
+| --- | --- |
+| 快速（默认） | `low` |
+| 均衡 | `medium` |
+| 深入 | `high` |
+
+用户最高只能选到 `high`；`xhigh` / `max` 只能由管理员通过 `ASSISTANT_EFFORT` 设置。
 
 ## 常用命令
 
