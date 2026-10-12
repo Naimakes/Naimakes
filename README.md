@@ -106,6 +106,19 @@ npm start                # 启动 API 服务（同时托管 dist/）
 
 接口（均需登录，限定为本人对话）：`GET /api/assistant/chats`、`GET|PUT|PATCH|DELETE /api/assistant/chats/:id`、`POST|DELETE /api/assistant/chats/:id/share`、`GET /api/assistant/shared/:token`、`POST /api/assistant/shared/:token/save`，以及生成标题的 `POST /api/assistant/title`。
 
+## 图书馆
+
+登录用户的「图书馆」（账号菜单 → 图书馆，路径 `/library`）收纳自己上传过的全部文件、图片和 PDF，数据存放在 SQLite 的 `library_files` 表中（启动时自动建表，并把已有的帖子、评论、私信附件一次性补录进来）。
+
+- **来源**：发帖、评论、私信里添加的附件；和 AI 助手对话时附上的文件（登录后自动保存，同一份内容不会重复保存）；以及在图书馆里点「上传」直接添加的文件。文件独立于帖子和对话，删除聊天记录或帖子不会删除这些文件。
+- **分类**：顶部的液态玻璃滑动选择器依次是「全部 / 收藏 / 图片 / PDF / 文稿 / 表格 / 音视频 / 其他」。
+- **操作**：点文件即可查看，也可以直接下载；多选（「选择」按钮）后可批量收藏、删除。右键（移动端长按）文件还可以置顶、隐藏。
+- **已隐藏**：隐藏的文件不出现在「全部」和各分类里，在页面右上角「⋯」→「已隐藏」中查看和取消隐藏。
+- **已删除**：删除是软删除，文件进入右上角「⋯」→「已删除」，保留 30 天后由服务端自动清除（每小时清理一次）；期间可以查看、下载、恢复，也可以手动彻底删除或清空。彻底删除时，只有没有被任何帖子、头像等内容继续引用的文件才会从磁盘移除。
+- **容量**：每人最多保存 2000 个文件（含「已删除」里的）；单个文件上限仍为 25MB。
+
+接口（均需登录，限定为本人文件）：`GET /api/library/files`、`POST /api/library/files`（登记已上传的文件）、`POST /api/library/files/action`（`favorite` / `unfavorite` / `pin` / `unpin` / `hide` / `unhide` / `delete` / `restore` / `purge`，一次最多 200 个）、`DELETE /api/library/trash`（清空已删除）。
+
 ## 常用命令
 
 | 命令 | 作用 |

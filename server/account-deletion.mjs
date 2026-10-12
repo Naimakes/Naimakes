@@ -32,6 +32,7 @@ function fileCandidates(user) {
     UNION SELECT banner FROM profiles WHERE user_id=$user
     UNION SELECT banner_mobile FROM profiles WHERE user_id=$user
     UNION SELECT cover FROM collections WHERE user_id=$user
+    UNION SELECT url FROM library_files WHERE user_id=$user
     UNION SELECT content FROM posts WHERE author_id=$user
     UNION SELECT content FROM comments WHERE id IN (${removedComments})
     UNION SELECT content FROM messages WHERE id IN (${removedMessages})
@@ -39,8 +40,9 @@ function fileCandidates(user) {
   return new Set(rows.flatMap((r) => String(r.value || "").match(uploadPattern) || []));
 }
 
-const fileStillUsed = db.prepare(`
+export const fileStillUsed = db.prepare(`
   SELECT 1 FROM attachments WHERE url=$url
+  UNION ALL SELECT 1 FROM library_files WHERE url=$url
   UNION ALL SELECT 1 FROM users WHERE avatar=$url OR instr(bio,$url)>0
   UNION ALL SELECT 1 FROM profiles WHERE banner=$url OR banner_mobile=$url
   UNION ALL SELECT 1 FROM collections WHERE cover=$url OR instr(description,$url)>0

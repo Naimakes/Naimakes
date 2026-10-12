@@ -70,6 +70,7 @@ Naimakes 论坛是一个关于前沿科技与人类未来的开放社区，关�
 - 可以在讨论下评论、回复他人、给评论投票，也可以引用其他讨论。
 - 「稍后再看」（/read-later）用于保存待读讨论；「我的收藏」（/saved）可以把讨论整理进不同的收藏夹，收藏夹可设为公开或私密。
 - 「最近浏览」（/history）记录读过的讨论；「我的讨论」（/mine）查看自己发布的内容；「我的关注」（/following）查看关注的成员。
+- 「图书馆」（/library）收纳你上传过的全部文件、图片和 PDF（包括发帖附件与和助手对话时附上的文件），删除帖子或对话不会带走这些文件。可以收藏、置顶、隐藏、删除文件；删除的文件会在「已删除」里保留 30 天，期间可以恢复。
 - 可以跟踪关键词或版块，相关新内容会出现在消息中心。
 
 ## 消息与通知
@@ -408,7 +409,7 @@ function readAttachments(body) {
       if (!item.data.startsWith("JVBER")) continue;
       files.push({ kind: "pdf", name, data: item.data });
     } else if (item.kind === "text") {
-      files.push({ kind: "text", name, text: item.data.replace(/<\/attached_file/gi, "<\\/attached_file") });
+      files.push({ kind: "text", name, raw: item.data, text: item.data.replace(/<\/attached_file/gi, "<\\/attached_file") });
     }
   }
   return files;
@@ -463,7 +464,7 @@ function agentTools(req, app, send, { eager }) {
   }));
 }
 
-export function installAssistant(app, { auth, liveClause }) {
+export function installAssistant(app, { auth, liveClause, fileLibrary }) {
   const index = createIndex(liveClause);
   // DeepSeek serves the same Messages API at its own address; a DeepSeek key wins over a Claude one.
   const deepseek = !!process.env.DEEPSEEK_API_KEY;
@@ -696,6 +697,17 @@ export function installAssistant(app, { auth, liveClause }) {
     const messages = readMessages(req.body);
     if (!messages) return res.status(400).json({ error: "请输入想问的问题。" });
     const files = readAttachments(req.body);
+    // 附上的文件同时存进图书馆；它们与这段对话互不依赖，之后删除对话不会带走文件。
+    if (req.user && fileLibrary) {
+      for (const f of files) {
+        try {
+          const buffer = f.kind === "text" ? Buffer.from(f.raw, "utf8") : Buffer.from(f.data, "base64");
+          fileLibrary.saveBuffer(req.user.id, { buffer, name: f.name, mime: f.kind === "pdf" ? "application/pdf" : f.kind === "image" ? f.mime : "text/plain" });
+        } catch (error) {
+          console.error("Assistant library save failed:", error?.message || error);
+        }
+      }
+    }
     const users = messages.filter((m) => m.role === "user");
     const question = users[users.length - 1].content;
     const previous = users.slice(-3, -1).map((m) => m.content).join(" ");

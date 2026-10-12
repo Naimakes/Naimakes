@@ -1,0 +1,270 @@
+.file-library {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  min-width: 0;
+}
+.file-actions-slot {
+  display: contents;
+}
+.file-more {
+  position: relative;
+  display: inline-flex;
+}
+.file-menu-count {
+  margin-left: auto;
+  padding-left: 14px;
+  font-style: normal;
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+/* 分类滑动选择器：条目较多时换行，而不是挤在一行里 */
+.fluid-tabs.fluid-tabs.glass-segments.file-tabs {
+  grid-auto-flow: row;
+  grid-template-columns: repeat(auto-fit, minmax(76px, 1fr));
+  align-self: stretch;
+  border-radius: 28px;
+}
+@media (min-width: 761px) {
+  .fluid-tabs.fluid-tabs.glass-segments.file-tabs {
+    grid-auto-flow: column;
+    grid-template-columns: none;
+    align-self: flex-start;
+    border-radius: 999px;
+  }
+  .fluid-tabs.fluid-tabs.glass-segments.file-tabs > button.glass-segment {
+    padding-inline: 18px;
+  }
+}
+
+.file-subhead {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+.file-subhead h3 {
+  margin: 0;
+  font-size: 1.125rem;
+}
+.file-subhead .text-button {
+  margin-left: auto;
+}
+.file-note {
+  margin: -6px 0 0;
+  color: var(--muted);
+  font-size: 0.8125rem;
+  line-height: 1.6;
+}
+.file-toolbar {
+  margin-bottom: 0;
+}
+.file-summary {
+  margin-right: auto;
+  color: var(--muted);
+  font-size: 0.8125rem;
+  white-space: nowrap;
+}
+.file-batch {
+  margin-bottom: 0;
+}
+.file-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 56px 0;
+  color: var(--muted);
+}
+.file-empty {
+  padding-block: 56px;
+}
+.file-empty p {
+  max-width: 420px;
+  margin: 0 auto;
+  color: var(--muted);
+  line-height: 1.7;
+}
+
+.file-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 16px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.file-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--surface);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+  -webkit-touch-callout: none;
+  user-select: none;
+}
+.file-card.pinned {
+  border-color: rgb(0 0 0 / 0.28);
+}
+.file-card.checked {
+  border-color: var(--ink);
+  box-shadow: 0 0 0 1px var(--ink);
+}
+@media (hover: hover) and (pointer: fine) {
+  .file-card:hover {
+    box-shadow: var(--shadow), 0 0 0 1px rgb(0 0 0 / 0.05);
+  }
+}
+.file-open {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.file-thumb {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  background: var(--soft);
+}
+.file-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  pointer-events: none;
+}
+.file-glyph {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  color: var(--secondary);
+}
+.file-glyph b {
+  font-size: 0.6875rem;
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+.file-glyph.kind-pdf {
+  color: #b42318;
+}
+.file-info {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  padding: 12px 14px 14px;
+}
+.file-info strong {
+  overflow: hidden;
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.file-info small {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 0.75rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.file-check {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--surface);
+  box-shadow: 0 1px 4px rgb(0 0 0 / 0.2);
+  cursor: pointer;
+}
+.file-check input {
+  margin: 0;
+}
+.file-badges {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  display: flex;
+  gap: 4px;
+  padding: 5px 7px;
+  border-radius: 999px;
+  background: rgb(0 0 0 / 0.55);
+  color: #fff;
+  pointer-events: none;
+}
+.file-card:has(.file-check) .file-badges {
+  left: 44px;
+}
+.file-actions {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: flex;
+  gap: 4px;
+  opacity: 0;
+  transform: translateY(-2px);
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+.file-actions .icon-button {
+  width: 32px;
+  height: 32px;
+  background: var(--surface);
+  box-shadow: 0 1px 4px rgb(0 0 0 / 0.2);
+}
+.file-actions .icon-button.is-on {
+  color: #b7791f;
+}
+.file-card:hover .file-actions,
+.file-card:focus-within .file-actions {
+  opacity: 1;
+  transform: none;
+}
+@media (hover: none) {
+  .file-actions {
+    opacity: 1;
+    transform: none;
+  }
+}
+@media (max-width: 760px) {
+  .file-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+  .file-info {
+    padding: 10px 11px 12px;
+  }
+  .file-summary {
+    display: none;
+  }
+}
+@media (max-width: 760px) {
+  .library-toolbar.file-toolbar {
+    display: flex;
+    flex-wrap: nowrap;
+  }
+  .library-toolbar.file-toolbar .library-search {
+    flex: 1 1 auto;
+    width: auto;
+    order: 0;
+  }
+  .library-toolbar.file-toolbar > .button.compact {
+    flex: none;
+    width: auto;
+  }
+}
