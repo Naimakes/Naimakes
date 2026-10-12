@@ -633,7 +633,7 @@ export function installAssistant(app, { auth, liveClause }) {
       ? db
           .prepare(
             `SELECT c.id,c.user_id,c.share_title AS title,c.share_messages AS messages,c.shared_at,u.name AS author
-             FROM assistant_chats c JOIN users u ON u.id=c.user_id WHERE c.share_token=?`,
+             FROM assistant_chats c JOIN users u ON u.id=c.user_id WHERE c.share_token=? AND u.status<>'deleted'`,
           )
           .get(token)
       : null;
