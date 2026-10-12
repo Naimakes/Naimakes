@@ -6,6 +6,7 @@ import remarkGfm from "remark-gfm";
 import { ArrowUp, ArrowUpRight, ChevronRight, FileText, History, Minus, Plus, RotateCcw, Square, SquarePen, X } from "lucide-react";
 import { LiquidButton } from "../forum/motion/LiquidButton";
 import { useMotionPreferences } from "../forum/motion/motion-preferences";
+import { ThinkingSwitch } from "./ThinkingSwitch";
 import AssistantDetails from "./AssistantDetails";
 import AssistantHistory from "./AssistantHistory";
 import { openShare } from "../forum/share/share-api";
@@ -872,6 +873,7 @@ export default function AssistantDock({ userId, shared = null }: { userId: strin
                     {fileError && <span className="assistant-attach-error" role="alert">{fileError}</span>}
                   </div>
                 )}
+                <ThinkingSwitch compact disabled={chat.phase !== "idle"} />
                 <div className="assistant-compose-row">
                   <input
                     ref={picker}

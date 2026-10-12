@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from "react";
+import { getPrefs } from "./prefs";
 import { info, type Attachment, type FileInfo } from "./attachments";
 
 export type Source = { type: string; id: string; title: string; url: string; board: string; excerpt: string };
@@ -306,6 +307,7 @@ export async function ask(question: string, page: { path: string; title: string;
       body: JSON.stringify({
         messages: [...history, { role: "user", content: text }],
         page,
+        thinking: getPrefs().thinking,
         ...(files.length ? { attachments: files.map(({ name, kind, mime, data }) => ({ name, kind, mime, data })) } : {}),
       }),
       signal: abort.signal,

@@ -45,11 +45,15 @@ const shapes = [
 ];
 const colors = ["black", "brown", "red", "orange", "yellow", "green", "cyan", "blue", "violet", "magenta", "gray"];
 
+// 用户可选的思考档位及其对应的推理强度；最高只到 high，xhigh/max 仅供管理员通过环境变量设置。
+const thinkingEfforts = { fast: "low", balanced: "medium", deep: "high" };
+
 export function sanitizePrefs(input) {
   if (!input || typeof input !== "object" || Array.isArray(input)) return null;
   const out = {};
   if (shapes.includes(input.shape)) out.shape = input.shape;
   if (colors.includes(input.color)) out.color = input.color;
+  if (Object.hasOwn(thinkingEfforts, input.thinking)) out.thinking = input.thinking;
   return out;
 }
 
@@ -689,7 +693,7 @@ export function installAssistant(app, { auth, liveClause }) {
       max_tokens: 16000,
       betas: ["server-side-fallback-2026-07-01"],
       fallbacks: "default",
-      output_config: { effort },
+      output_config: { effort: Object.hasOwn(thinkingEfforts, req.body?.thinking) ? thinkingEfforts[req.body.thinking] : effort },
       system: [{ type: "text", text: instructions, cache_control: { type: "ephemeral" } }],
       messages: payload,
     });
