@@ -68,7 +68,7 @@ npm start                # 启动 API 服务（同时托管 dist/）
 ## 部署（Docker Compose）
 
 1. 复制 `.env.example` 为 `.env`，填写 `APP_ORIGIN`、`DOMAIN`、`ADMIN_EMAIL` 等。
-2. 创建站长账号文件 `secrets/owner.json`（`compose.yaml` 以 Docker secret 方式挂载，该目录已被 `.gitignore` 忽略）。可在交互式终端运行 `npm run create-site-owner` 生成。
+2. 站长账号已内置在代码里（`server/built-in-owner.mjs`，只保存加盐哈希，不含明文密码），首次启动会自动创建。如需改用自己的账号，运行 `npm run create-site-owner -- ID email` 生成 `secrets/owner.json`，该文件存在时优先于内置账号。
 3. 启动：
 
    ```bash

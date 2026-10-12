@@ -8,6 +8,7 @@ import {
 import { tmpdir } from "node:os";
 import { basename, dirname, join, relative, resolve } from "node:path";
 import { verifyProductionBuild } from "./verify-build.mjs";
+import { BUILT_IN_OWNER } from "../server/built-in-owner.mjs";
 
 const requiredFiles = [
   "package.json", "package-lock.json", "index.html", "landing.html",
@@ -55,8 +56,8 @@ function verifyUploadedReferences(database, uploads) {
 
 async function snapshotData(source, destination, ownerFile) {
   if (!existsSync(join(source, "naimakes.sqlite"))) throw new Error("--with-data requires an existing naimakes.sqlite database.");
-  if (!existsSync(ownerFile)) throw new Error("Private release requires the existing owner bootstrap file; no accounts or passwords will be created by packaging.");
-  const owner = JSON.parse(readFileSync(ownerFile, "utf8"));
+  const hasOwnerFile = existsSync(ownerFile);
+  const owner = hasOwnerFile ? JSON.parse(readFileSync(ownerFile, "utf8")) : BUILT_IN_OWNER;
   if (!/^[a-zA-Z0-9_-]{2,32}$/.test(owner.id) || typeof owner.email !== "string" || !owner.email.includes("@") || !/^[0-9a-f]{32}:[0-9a-f]{128}$/.test(owner.passwordHash))
     throw new Error("The private owner bootstrap file is invalid.");
   mkdirSync(destination, { recursive: true, mode: 0o700 });
@@ -85,10 +86,12 @@ async function snapshotData(source, destination, ownerFile) {
     snapshotCounts = tableCounts(snapshot);
   } finally { snapshot.close(); }
   chmodSync(join(destination, "naimakes.sqlite"), 0o600);
-  const secretDirectory = join(dirname(destination), "secrets");
-  mkdirSync(secretDirectory, { mode: 0o700 });
-  copyFileSync(ownerFile, join(secretDirectory, "owner.json"));
-  chmodSync(join(secretDirectory, "owner.json"), 0o644);
+  if (hasOwnerFile) {
+    const secretDirectory = join(dirname(destination), "secrets");
+    mkdirSync(secretDirectory, { mode: 0o700 });
+    copyFileSync(ownerFile, join(secretDirectory, "owner.json"));
+    chmodSync(join(secretDirectory, "owner.json"), 0o644);
+  }
   return { sourceCounts, snapshotCounts, referencedUploads, browserSessionsRemovedFromCopy: sourceCounts.sessions || 0 };
 }
 

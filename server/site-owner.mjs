@@ -2,16 +2,18 @@ import { readFileSync, existsSync } from "node:fs";
 import { resolve } from "node:path";
 import { fromRoot } from "./project-paths.mjs";
 import { db } from "./database.mjs";
-export function provisionOwner() {
+import { BUILT_IN_OWNER } from "./built-in-owner.mjs";
+export function ownerBootstrapPath() {
   const path = process.env.OWNER_BOOTSTRAP_FILE
     ? resolve(process.env.OWNER_BOOTSTRAP_FILE)
     : fromRoot("secrets/owner.json");
-  if (!existsSync(path)) {
-    if (process.env.OWNER_BOOTSTRAP_FILE)
-      throw new Error("Owner bootstrap secret is missing.");
-    return;
-  }
-  const config = JSON.parse(readFileSync(path, "utf8"));
+  return existsSync(path) ? path : null;
+}
+export function provisionOwner() {
+  const path = ownerBootstrapPath();
+  const config = path
+    ? JSON.parse(readFileSync(path, "utf8"))
+    : BUILT_IN_OWNER;
   if (
     !/^[a-zA-Z0-9_-]{2,32}$/.test(config.id) ||
     typeof config.email !== "string" ||

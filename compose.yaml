@@ -4,7 +4,6 @@ services:
     restart: unless-stopped
     init: true
     environment:
-      OWNER_BOOTSTRAP_FILE: /run/secrets/naimakes_owner
       NODE_ENV: production
       PORT: 3001
       DATA_DIR: /app/data
@@ -22,8 +21,6 @@ services:
     volumes:
       - forum_data:/app/data
       - forum_backups:/app/backups
-    secrets:
-      - naimakes_owner
     expose:
       - "3001"
     security_opt:
@@ -52,7 +49,3 @@ volumes:
   forum_backups:
   caddy_data:
   caddy_config:
-
-secrets:
-  naimakes_owner:
-    file: ./secrets/owner.json
