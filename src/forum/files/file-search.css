@@ -1,0 +1,74 @@
+/* 搜索框：在站内页面里沿用 .library-search 的玻璃样式；在助手面板等不在 .app-shell 里的地方，用下面的样式自成一体。 */
+.file-search.search-input-wrap.library-search {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  min-height: 46px;
+  margin: 0;
+  width: 100%;
+  padding: 0 8px 0 17px;
+  border-radius: 999px;
+  border-bottom-width: 1px;
+  border: 1px solid var(--glass-border, rgb(0 0 0 / .1));
+  background: var(--glass-sheen, none), var(--glass-bg, rgb(255 255 255 / .6));
+  box-shadow: var(--glass-control-shadow, none);
+  -webkit-backdrop-filter: var(--glass-blur, none);
+  backdrop-filter: var(--glass-blur, none);
+  color: var(--secondary, #626262);
+  transition: border-color .2s ease, box-shadow .2s ease;
+}
+.file-search.search-input-wrap > svg { flex: none; color: var(--glass-text, currentColor); }
+.file-search.search-input-wrap > input {
+  flex: 1 1 auto;
+  min-width: 0;
+  width: 100%;
+  padding: 10px 0 !important;
+  border: 0 !important;
+  outline: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+  color: var(--glass-text, inherit);
+  font: inherit;
+  font-size: 14px !important;
+  -webkit-appearance: none;
+  appearance: none;
+}
+.file-search.search-input-wrap > input::-webkit-search-cancel-button { display: none; }
+.file-search.search-input-wrap:focus-within {
+  border-color: var(--glass-highlight, rgb(0 0 0 / .25));
+  box-shadow: var(--glass-control-shadow, none), 0 0 0 2px color-mix(in srgb, var(--glass-accent, #000) 20%, transparent);
+}
+.file-search.search-input-wrap .file-search-clear {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+.file-search.search-input-wrap .file-search-clear:hover { background: rgb(0 0 0 / .07); }
+.file-search.search-input-wrap .file-search-busy { flex: none; opacity: .6; }
+.file-search.search-input-wrap > kbd {
+  display: inline-flex;
+  align-items: center;
+  height: 26px;
+  margin-right: 6px;
+  padding: 0 9px;
+  border-radius: 999px;
+  border: 1px solid var(--glass-line, rgb(0 0 0 / .12));
+  background: color-mix(in srgb, var(--glass-bg, #fff) 60%, transparent);
+  box-shadow: inset 0 1px 0 var(--glass-highlight, rgb(255 255 255 / .6));
+  color: var(--secondary, #626262);
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 500;
+}

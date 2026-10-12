@@ -28,7 +28,7 @@ import { ModalRegistration as Modal } from "../motion/OverlayHost";
 import { uploadFile, type Attachment } from "../api";
 import { UploadProgress, useUploadSession } from "../ui/UploadProgress";
 
-type Kind =
+export type Kind =
   | "image"
   | "video"
   | "audio"
@@ -88,7 +88,7 @@ const extensions: Record<string, Kind> = {
   tar: "archive",
   gz: "archive",
 };
-const labels: Record<Kind, string> = {
+export const labels: Record<Kind, string> = {
   image: "图片",
   video: "视频",
   audio: "音频",
@@ -100,7 +100,7 @@ const labels: Record<Kind, string> = {
   archive: "压缩包",
   file: "文件",
 };
-const icons: Record<Kind, typeof Paperclip> = {
+export const icons: Record<Kind, typeof Paperclip> = {
   image: ImageIcon,
   video: FileVideo,
   audio: FileAudio,
@@ -112,7 +112,7 @@ const icons: Record<Kind, typeof Paperclip> = {
   archive: Archive,
   file: Paperclip,
 };
-function fileKind(file: Attachment): Kind {
+export function fileKind(file: Attachment): Kind {
   const mime = (file.mime || "").toLowerCase();
   if (mime.startsWith("image/")) return "image";
   if (mime.startsWith("video/")) return "video";
@@ -125,7 +125,7 @@ function fileKind(file: Attachment): Kind {
 }
 const fileTypeName = (file: Attachment) => labels[fileKind(file)];
 const isImage = (file: Attachment) => fileKind(file) === "image";
-function fileSize(bytes: number) {
+export function fileSize(bytes: number) {
   if (bytes < 1024) return bytes + " B";
   if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(0) + " KB";
   return (bytes / 1048576).toFixed(1) + " MB";
@@ -189,7 +189,7 @@ function TextPreview({ file }: { file: Attachment }) {
   return <pre className="attachment-text">{text || "正在读取…"}</pre>;
 }
 
-function AttachmentViewer({
+export function AttachmentViewer({
   file,
   onClose,
 }: {

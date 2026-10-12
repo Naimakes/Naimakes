@@ -1,3 +1,5 @@
+// 附件有三种来源：直接上传（data 是内容）、图书馆里的文件（ref.library_id），以及站内文章或文章里的附件（ref.post_id）。
+export type AttachmentRef = { library_id?: string; post_id?: string; attachment_id?: string };
 export type Attachment = {
   id: string;
   name: string;
@@ -5,8 +7,9 @@ export type Attachment = {
   mime: string;
   data: string;
   preview?: string;
+  ref?: AttachmentRef;
 };
-export type FileInfo = { name: string; kind: "image" | "pdf" | "text"; preview?: string };
+export type FileInfo = { name: string; kind: "image" | "pdf" | "text"; preview?: string; id?: string; post?: { post_id: string; attachment_id?: string } };
 
 export const MAX_FILES = 3;
 const PREVIEW_EDGE = 96;
@@ -63,4 +66,24 @@ export async function readAttachment(file: File): Promise<Attachment> {
   throw new Error(`暂不支持「${file.name}」，可以附上图片、PDF 或文本文件。`);
 }
 
-export const info = (files: Attachment[]): FileInfo[] => files.map(({ name, kind, preview }) => ({ name, kind, preview }));
+export const info = (files: Attachment[]): FileInfo[] =>
+  files.map(({ name, kind, preview, ref }) => ({
+    name,
+    kind,
+    preview,
+    ...(ref?.library_id ? { id: ref.library_id } : {}),
+    ...(ref?.post_id ? { post: { post_id: ref.post_id, ...(ref.attachment_id ? { attachment_id: ref.attachment_id } : {}) } } : {}),
+  }));
+
+/** 发给服务端的附件：引用的文件只传引用，不传内容。 */
+export const wire = ({ name, kind, mime, data, ref }: Attachment) => (ref ? ref : { name, kind, mime, data });
+
+export const imageMimes = ["image/png", "image/jpeg", "image/gif", "image/webp"];
+/** 助手能阅读的文件类型；其他类型（Word、压缩包、音视频等）返回 null。 */
+export function kindOfFile(name: string, mime: string): Attachment["kind"] | null {
+  if (imageMimes.includes(mime)) return "image";
+  if (mime === "application/pdf" || /\.pdf$/i.test(name)) return "pdf";
+  if (mime.startsWith("text/") || mime === "application/json" || textExtensions.test(name)) return "text";
+  return null;
+}
+export const newId = uid;

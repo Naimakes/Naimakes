@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { ArrowUpRight, Check, ChevronLeft, MessageSquarePlus, Pencil, RotateCcw, X } from "lucide-react";
+import { ArrowUpRight, Brain, CalendarClock, Check, ChevronLeft, ChevronRight, MessageSquarePlus, Pencil, RotateCcw, X } from "lucide-react";
 import { useMotionPreferences } from "../forum/motion/motion-preferences";
 import { LiquidSwitch } from "../forum/ui/LiquidSwitch";
 import { LiquidButton } from "../forum/motion/LiquidButton";
@@ -17,6 +17,8 @@ export default function AssistantDetails({
   onClose,
   onNewChat,
   onSettings,
+  onMemory,
+  onTasks,
 }: {
   state: string;
   status: string;
@@ -25,6 +27,8 @@ export default function AssistantDetails({
   onClose: () => void;
   onNewChat: () => void;
   onSettings: () => void;
+  onMemory: () => void;
+  onTasks: () => void;
 }) {
   const prefs = usePrefs();
   const notify = useNotify();
@@ -153,6 +157,26 @@ export default function AssistantDetails({
             新对话
           </LiquidButton>
         </section>
+
+        <LiquidButton type="button" className="assistant-card assistant-link-row" onClick={onMemory}>
+          <span className="assistant-row-text">
+            <strong>
+              <Brain size={14} aria-hidden="true" /> 记忆
+            </strong>
+            <small>我记住的写作风格、操作习惯、回答要求，以及你让我记的事</small>
+          </span>
+          <ChevronRight size={16} aria-hidden="true" />
+        </LiquidButton>
+
+        <LiquidButton type="button" className="assistant-card assistant-link-row" onClick={onTasks}>
+          <span className="assistant-row-text">
+            <strong>
+              <CalendarClock size={14} aria-hidden="true" /> 定时任务
+            </strong>
+            <small>到固定的时间，我会自动执行你交代的事</small>
+          </span>
+          <ChevronRight size={16} aria-hidden="true" />
+        </LiquidButton>
 
         <LiquidButton type="button" className="assistant-card assistant-link-row" onClick={onSettings}>
           <span className="assistant-row-text">

@@ -34,6 +34,7 @@ const kindCategory = {
   admin_action: "moderation",
   system_event: "moderation",
   quote: "other",
+  assistant: "other",
 };
 export const governanceKinds = ["moderation", "appeal", "admin_request", "admin_action", "system_event"];
 const categoryOf = (kind) => kindCategory[kind] || "other";

@@ -29,6 +29,7 @@ import { installFeedPrefs } from "./feed-preferences.mjs";
 import { installDrafts } from "./drafts.mjs";
 import { installInsights } from "./insights.mjs";
 import { installAssistant } from "./assistant.mjs";
+import { installFileLibrary } from "./file-library.mjs";
 import { hasRichMedia, plainText, postFormat } from "./rich-text.mjs";
 import { prepareShare, shareCard } from "./sharing.mjs";
 import {
@@ -458,6 +459,14 @@ const uploadLimit = 25 * 1024 * 1024;
 const uploadPath = /^\/uploads\/[a-f0-9-]{36}\.[a-z0-9]{1,4}$/;
 const validUpload = (url) =>
   uploadPath.test(url) && existsSync(resolve(uploadDir, url.slice(9)));
+const fileLibrary = installFileLibrary(app, {
+  db,
+  auth,
+  uploadDir,
+  uploadTypes,
+  uploadPath,
+  uploadLimit,
+});
 const attachmentColumns = "id,url,name,mime,size,inline";
 const asAttachment = (row) => ({ ...row, inline: !!row.inline });
 const listAttachments = (ownerType, ownerId) =>
@@ -560,7 +569,7 @@ function saveAttachments(ownerType, ownerId, userId, list = [], inline = false) 
   const insert = db.prepare(
     "INSERT INTO attachments(id,owner_type,owner_id,user_id,url,name,mime,size,position,created_at,inline) VALUES(?,?,?,?,?,?,?,?,?,?,?)",
   );
-  list.forEach((f, i) =>
+  list.forEach((f, i) => {
     insert.run(
       randomUUID(),
       ownerType,
@@ -573,8 +582,9 @@ function saveAttachments(ownerType, ownerId, userId, list = [], inline = false) 
       i,
       Date.now(),
       inline ? 1 : 0,
-    ),
-  );
+    );
+    fileLibrary.register(userId, f, ownerType);
+  });
 }
 function dropAttachments(ownerType, ownerIds) {
   if (!ownerIds.length) return;
@@ -652,7 +662,20 @@ const commentDepth = (id) =>
     .get(id).n;
 const childCount = (id) =>
   db.prepare("SELECT COUNT(*) AS n FROM comments WHERE parent_id=?").get(id).n;
-installAssistant(app, { auth, liveClause });
+installAssistant(app, {
+  auth,
+  liveClause,
+  fileLibrary,
+  // 定时任务没有用户的请求可借用，运行时临时开一个短命的登录会话，用完即删。
+  sessions: {
+    open(userId) {
+      const token = randomBytes(32).toString("hex");
+      db.prepare("INSERT INTO sessions VALUES(?,?,?)").run(digest(token), userId, Date.now() + 15 * 60000);
+      return { token, close: () => db.prepare("DELETE FROM sessions WHERE token=?").run(digest(token)) };
+    },
+    base: () => `http://127.0.0.1:${port}/api`,
+  },
+});
 installLibrary(app, {
   db,
   dataDir,

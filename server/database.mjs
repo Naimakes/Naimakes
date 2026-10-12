@@ -146,6 +146,38 @@ if (
   db.exec(
     "ALTER TABLE attachments ADD COLUMN inline INTEGER NOT NULL DEFAULT 0",
   );
+/* 图书馆：每个人上传过的文件（发帖、评论、私信附件与助手对话里的文件）。
+   它独立于帖子和聊天记录：删掉帖子或对话，文件仍留在这里。
+   删除是软删除：deleted_at 有值即在“已删除”里，30 天后由服务端清理。 */
+db.exec(`
+CREATE TABLE IF NOT EXISTS library_files (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  url TEXT NOT NULL, name TEXT NOT NULL, mime TEXT NOT NULL,
+  size INTEGER NOT NULL,
+  source TEXT NOT NULL DEFAULT 'upload',
+  hash TEXT,
+  favorite INTEGER NOT NULL DEFAULT 0,
+  pinned INTEGER NOT NULL DEFAULT 0,
+  pinned_at INTEGER,
+  hidden INTEGER NOT NULL DEFAULT 0,
+  deleted_at INTEGER,
+  created_at INTEGER NOT NULL,
+  UNIQUE(user_id, url)
+);
+CREATE INDEX IF NOT EXISTS idx_library_files_user ON library_files(user_id, deleted_at, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_library_files_hash ON library_files(user_id, hash) WHERE hash IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_library_files_deleted ON library_files(deleted_at) WHERE deleted_at IS NOT NULL;
+`);
+if (!db.prepare("SELECT 1 FROM settings WHERE key='file_library_backfilled'").get()) {
+  db.exec(`BEGIN IMMEDIATE;
+    INSERT OR IGNORE INTO library_files(id,user_id,url,name,mime,size,source,created_at)
+      SELECT lower(hex(randomblob(16))),user_id,url,name,mime,size,owner_type,MIN(created_at)
+      FROM attachments WHERE user_id IS NOT NULL GROUP BY user_id,url;
+    INSERT INTO settings VALUES('file_library_backfilled','1');
+    COMMIT;
+  `);
+}
 if (
   !db
     .prepare("PRAGMA table_info(recents)")

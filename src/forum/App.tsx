@@ -42,6 +42,7 @@ import {
   MessageCircleOff,
   ShieldAlert,
   MoreHorizontal,
+  Library as LibraryIcon,
   UserMinus,
   UserPlus,
   Lock,
@@ -93,6 +94,7 @@ import {
   type FeedFilters,
 } from "./discover/feed-filters";
 import Library from "./library/Library";
+import FileLibrary from "./files/FileLibrary";
 import FeaturedRail from "./discover/FeaturedRail";
 import ShareSheet from "./share/ShareSheet";
 import { openShare, setShareHandler, setSharedChatHandler, type ShareTarget } from "./share/share-api";
@@ -184,6 +186,7 @@ function currentPage() {
     "/history",
     "/mine",
     "/following",
+    "/library",
     "/settings",
   ].includes(p)
     ? p
@@ -192,6 +195,7 @@ function currentPage() {
 
 export default function App() {
   const [savingPost, setSavingPost] = useState<Post | null>(null);
+  const [fileActionsSlot, setFileActionsSlot] = useState<HTMLElement | null>(null);
   const [sharing, setSharing] = useState<ShareTarget | null>(null);
   const [historyBatch, setHistoryBatch] = useState(false),
     [historyPicked, setHistoryPicked] = useState<string[]>([]),
@@ -469,6 +473,7 @@ export default function App() {
         page === "/saved" ||
         page === "/read-later" ||
         page === "/following" ||
+        page === "/library" ||
         page.startsWith("/collections/") ||
         page.startsWith("/u/") ||
         page === "/settings"
@@ -707,7 +712,7 @@ export default function App() {
       if (path === "/search" && url.searchParams.get("q")) return actions.submitSearch(url.searchParams.get("q") || "");
       if (path === "/compose") return actions.compose();
       if (path.startsWith("/collections/")) return actions.navigate(path);
-      const known = ["/", "/discover", "/topics", "/saved", "/read-later", "/history", "/mine", "/following"];
+      const known = ["/", "/discover", "/topics", "/saved", "/read-later", "/history", "/mine", "/following", "/library"];
       actions.navigate(known.includes(path) ? path : "/discover");
     });
     return () => setAssistantNavigator(null);
@@ -1432,6 +1437,8 @@ export default function App() {
             ? "我的讨论"
             : page === "/following"
               ? "我的关注"
+              : page === "/library"
+                ? "图书馆"
               : page === "/topics"
                 ? activeCategory?.name || (removedBoard ? "版块" : "找到你的好奇所在。")
                 : "发现值得讨论的未来。";
@@ -1441,7 +1448,9 @@ export default function App() {
     "/history",
     "/mine",
     "/following",
+    "/library",
   ].includes(page);
+  const isFilePage = page === "/library";
   const isLibraryPage =
     page === "/saved" ||
     page === "/read-later" ||
@@ -1773,6 +1782,7 @@ export default function App() {
                         [Users, "我的关注", "/following"],
                         [Clock3, "稍后再看", "/read-later"],
                         [History, "最近浏览", "/history"],
+                        [LibraryIcon, "图书馆", "/library"],
                       ].map(([Icon, label, path]: any, i: number) => (
                         <LiquidButton
                           key={path}
@@ -2044,6 +2054,7 @@ export default function App() {
                   )}
                 </div>
                 <div className="section-actions">
+                  {isFilePage && <span className="file-actions-slot" ref={setFileActionsSlot} />}
                   {page === "/topics" && !activeCategory && (
                     <LiquidButton
                       className="button secondary"
@@ -2300,6 +2311,14 @@ export default function App() {
                     <ArrowUpRight size={15} />
                   </LiquidButton>
                 </div>
+              ) : isFilePage ? (
+                <FileLibrary
+                  key={user?.id || "guest"}
+                  user={user}
+                  actionsSlot={fileActionsSlot}
+                  onLogin={() => setModal("auth")}
+                  notify={notify}
+                />
               ) : isLibraryPage ? (
                 <Library
                   key={page + ":" + (user?.id || "guest")}
