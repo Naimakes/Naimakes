@@ -31,6 +31,8 @@ CREATE INDEX IF NOT EXISTS assistant_tasks_due ON assistant_tasks(enabled, next_
 CREATE INDEX IF NOT EXISTS assistant_tasks_user ON assistant_tasks(user_id, created_at);
 `);
 
+if (!db.prepare("PRAGMA table_info(assistant_tasks)").all().some((c) => c.name === "agent_id")) db.exec("ALTER TABLE assistant_tasks ADD COLUMN agent_id TEXT");
+
 export const MAX_TASKS = 10;
 export const repeats = ["once", "daily", "weekdays", "weekly"];
 export const repeatLabels = { once: "仅一次", daily: "每天", weekdays: "工作日", weekly: "每周" };
@@ -156,6 +158,7 @@ const publicTask = (row) => ({
   last_status: row.last_status,
   last_result: row.last_result,
   last_chat_id: row.last_chat_id,
+  agent_id: row.agent_id || null,
   runs: row.runs,
   created_at: row.created_at,
 });
@@ -192,9 +195,9 @@ export function createTask(userId, input, options) {
   const id = randomUUID();
   const now = Date.now();
   db.prepare(
-    `INSERT INTO assistant_tasks(id,user_id,title,prompt,repeat,time,date,weekday,tz,allow_actions,enabled,next_run_at,created_at,updated_at)
-     VALUES(?,?,?,?,?,?,?,?,?,?,1,?,?,?)`,
-  ).run(id, userId, data.title, data.prompt, data.repeat, data.time, data.date ?? null, data.weekday ?? null, data.tz, data.allow_actions ?? 0, next, now, now);
+    `INSERT INTO assistant_tasks(id,user_id,title,prompt,repeat,time,date,weekday,tz,allow_actions,enabled,next_run_at,agent_id,created_at,updated_at)
+     VALUES(?,?,?,?,?,?,?,?,?,?,1,?,?,?,?)`,
+  ).run(id, userId, data.title, data.prompt, data.repeat, data.time, data.date ?? null, data.weekday ?? null, data.tz, data.allow_actions ?? 0, next, options?.agent || null, now, now);
   return publicTask(getTask(userId, id));
 }
 

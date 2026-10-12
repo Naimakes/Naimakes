@@ -5,6 +5,7 @@ import { StatusPill } from "../forum/motion/StatusPill";
 import { BotFigure } from "./BotFigure";
 import { ThinkingSwitch } from "./ThinkingSwitch";
 import { ShapeThumb } from "./ShapeThumb";
+import AgentManager from "./AgentManager";
 import { colorIds, colorNames, resetPrefs, shapes, swatchOf, thinkingModes, updatePrefs, usePrefs, useSync } from "./prefs";
 import "./assistant-settings.css";
 
@@ -14,6 +15,7 @@ export default function AssistantSettings() {
   const look = useMemo(() => ({ shape: prefs.shape, color: prefs.color }), [prefs.shape, prefs.color]);
 
   return (
+    <>
     <section className="profile-card assistant-settings" id="settings-assistant" aria-labelledby="assistant-settings-title">
       <div className="profile-card-head">
         <h2 id="assistant-settings-title">Naimakes</h2>
@@ -22,7 +24,7 @@ export default function AssistantSettings() {
           <RotateCcw size={13} />
           恢复默认
         </LiquidButton>
-        <p className="profile-card-note">选择 Naimakes 的形状和颜色，修改会立即同步到全站并自动保存。它的表情和动作会跟随搜索、思考、回答等状态自动变化，不需要设置。</p>
+        <p className="profile-card-note">这是内置的 Naimakes。选择它的形状和颜色，修改会立即同步到全站并自动保存。想要更多不同分工的助手，可以在下面的「智能体」里创建。它的表情和动作会跟随搜索、思考、回答等状态自动变化，不需要设置。</p>
       </div>
 
       <div className="assistant-settings-layout">
@@ -82,5 +84,7 @@ export default function AssistantSettings() {
         </div>
       </div>
     </section>
+    <AgentManager />
+    </>
   );
 }

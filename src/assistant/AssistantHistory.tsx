@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { ChevronLeft, Eye, EyeOff, Pin, Share2, Star, Trash2, X } from "lucide-react";
 import { LiquidButton } from "../forum/motion/LiquidButton";
+import { AgentCluster } from "./AgentAvatar";
+import { useAgents } from "./agents";
 import "./assistant-details.css";
 import { loadHistory, openChat, removeChat, shareChat, unshareChat, updateChat, useChat, type HistoryItem } from "./chat";
 
@@ -41,6 +43,7 @@ export default function AssistantHistory({
   onShare: (chat: { id: string; title: string; count: number }) => void;
 }) {
   const { history, historyError, signedIn, id } = useChat();
+  const { byId } = useAgents();
   const [tab, setTab] = useState<Tab>("all");
   const [panel, setPanel] = useState<{ id: string; note: string } | null>(null);
 
@@ -99,18 +102,23 @@ export default function AssistantHistory({
             <ul className="assistant-history-list">
               {list.map((item) => {
                 const name = item.title || "未命名对话";
+                const members = item.agents.map(byId);
                 return (
                   <li key={item.id} className={item.id === id ? "current" : undefined}>
                     <button type="button" className="assistant-history-open" onClick={() => open(item.id)}>
-                      <strong>
-                        {item.pinned && <Pin size={12} aria-label="已置顶" />}
-                        {item.favorite && <Star size={12} aria-label="已收藏" />}
-                        {name}
-                      </strong>
-                      <small>
-                        {when(item.updated_at)}
-                        {item.shared ? " · 已分享" : ""}
-                      </small>
+                      <AgentCluster agents={members} size={40} />
+                      <span className="assistant-history-text">
+                        <strong>
+                          {item.pinned && <Pin size={12} aria-label="已置顶" />}
+                          {item.favorite && <Star size={12} aria-label="已收藏" />}
+                          {name}
+                        </strong>
+                        <small>
+                          {members.length > 1 ? members.map((a) => a.name).join("、") + " · " : ""}
+                          {when(item.updated_at)}
+                          {item.shared ? " · 已分享" : ""}
+                        </small>
+                      </span>
                     </button>
                     <div className="assistant-history-actions">
                       <LiquidButton type="button" className={"icon-button assistant-icon" + (item.pinned ? " is-on" : "")} aria-pressed={item.pinned} aria-label={(item.pinned ? "取消置顶：" : "置顶：") + name} title={item.pinned ? "取消置顶" : "置顶"} onClick={() => updateChat(item.id, { pinned: !item.pinned })}>

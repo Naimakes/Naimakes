@@ -4,7 +4,7 @@ import { LiquidButton } from "../forum/motion/LiquidButton";
 import "./assistant-details.css";
 import { fetchShared, saveShared, useChat, type ChatMessage, type SharedChat } from "./chat";
 
-type MessageView = ComponentType<{ message: ChatMessage; last: boolean; onLink: (href: string) => void; onRetry: () => void }>;
+type MessageView = ComponentType<{ message: ChatMessage; last: boolean; onLink: (href: string) => void; onRetry: () => void; who?: { name: string; shape: string; color: string } | null }>;
 
 export default function AssistantShared({
   token,
@@ -77,9 +77,12 @@ export default function AssistantShared({
             </small>
           </div>
           <div className="assistant-body">
-            {data.messages.map((message, index) => (
-              <Message key={message.id} message={message} last={index === data.messages.length - 1} onLink={onLink} onRetry={() => {}} />
-            ))}
+            {data.messages.map((message, index) => {
+              // 分享的对话里出现的智能体：群聊或非内置智能体的回答前标出是谁说的。
+              const agent = message.role === "assistant" && message.agent ? data.agents?.find((a) => a.id === message.agent) : undefined;
+              const named = agent && ((data.agents?.length ?? 0) > 1 || agent.id !== "naimakes");
+              return <Message key={message.id} message={message} last={index === data.messages.length - 1} onLink={onLink} onRetry={() => {}} who={named ? agent : null} />;
+            })}
           </div>
           <div className="assistant-shared-foot">
             {failed && <p role="alert">保存失败，请稍后再试。</p>}
