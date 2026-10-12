@@ -662,7 +662,20 @@ const commentDepth = (id) =>
     .get(id).n;
 const childCount = (id) =>
   db.prepare("SELECT COUNT(*) AS n FROM comments WHERE parent_id=?").get(id).n;
-installAssistant(app, { auth, liveClause, fileLibrary });
+installAssistant(app, {
+  auth,
+  liveClause,
+  fileLibrary,
+  // 定时任务没有用户的请求可借用，运行时临时开一个短命的登录会话，用完即删。
+  sessions: {
+    open(userId) {
+      const token = randomBytes(32).toString("hex");
+      db.prepare("INSERT INTO sessions VALUES(?,?,?)").run(digest(token), userId, Date.now() + 15 * 60000);
+      return { token, close: () => db.prepare("DELETE FROM sessions WHERE token=?").run(digest(token)) };
+    },
+    base: () => `http://127.0.0.1:${port}/api`,
+  },
+});
 installLibrary(app, {
   db,
   dataDir,

@@ -1,6 +1,8 @@
 import { randomUUID } from "node:crypto";
 import { db } from "./database.mjs";
 import { plainText } from "./rich-text.mjs";
+import { createTask, deleteTask, describeSchedule, getTask, listTasks, repeats, updateTask } from "./assistant-tasks.mjs";
+import { addMemory, forgetMemory, kindLabels, listMemories, memoryKinds } from "./assistant-memory.mjs";
 
 // Everything a member can do on the site, exposed to Naimakes as tools. Each
 // action goes through the site's own /api routes as the signed-in member, so
@@ -864,6 +866,147 @@ const actionList = [
     },
   },
 
+  // —— 记忆 ——
+  {
+    name: "remember",
+    title: "记住",
+    kind: "write",
+    description:
+      "把用户明确要求记住的信息，或用户明确提出的长期要求（写作风格、以后执行操作时的习惯、回答方式、个人情况），存进用户的记忆，以后每次对话都会带上。一条记忆写成一句简短、自包含的话，如「写文章时用第一人称，语气轻松」。不要记密码、验证码、证件号等敏感信息；用户没有要求、只是随口一提的事不要自行记忆。",
+    input: shape({ content: str("要记住的内容，一句话", 200, 2), kind: oneOf(memoryKinds, "类型：style 写作风格、action 执行操作的习惯、answer 回答要求、fact 个人信息或其他事实") }, ["content"]),
+    async run(input, { user }) {
+      const added = addMemory(user.id, { content: input.content, kind: input.kind, source: "user" });
+      if (!added) throw new ActionError("记忆内容太短了。");
+      return {
+        data: { id: added.memory.id, saved: added.memory.content, already_known: !added.created },
+        summary: added.created ? `已记住：${clip(added.memory.content, 40)}` : "这条我已经记着了",
+      };
+    },
+  },
+  {
+    name: "list_memories",
+    title: "查看记忆",
+    kind: "read",
+    activity: "正在查看记忆…",
+    description: "列出用户当前所有的记忆（含 id、类型、内容、是否启用）。用户询问「你记得我什么」或要删除某条记忆前使用。",
+    input: shape({}),
+    async run(_input, { user }) {
+      const memories = listMemories(user.id);
+      return { data: { total: memories.length, memories: memories.map((m) => ({ id: m.id, type: kindLabels[m.kind], content: m.content, enabled: m.enabled })) } };
+    },
+  },
+  {
+    name: "forget_memory",
+    title: "忘记",
+    kind: "write",
+    description: "删除一条记忆（memory_id 来自 list_memories）。用户要求忘掉某件事时先 list_memories 找到对应条目再删除。",
+    input: shape({ memory_id: ref("记忆 ID") }, ["memory_id"]),
+    async run(input, { user }) {
+      if (!forgetMemory(user.id, input.memory_id)) throw new ActionError("没有找到这条记忆，请先用 list_memories 查看。", 404);
+      return { data: { ok: true }, summary: "已忘掉这条记忆" };
+    },
+  },
+
+  // —— 定时任务（只在和用户的对话里可用，定时运行时不能再设定新的任务） ——
+  {
+    name: "list_scheduled_tasks",
+    title: "查看定时任务",
+    kind: "read",
+    interactive: true,
+    activity: "正在查看定时任务…",
+    description: "列出用户设置的全部定时任务（id、名称、时间、是否启用、上次运行结果）。",
+    input: shape({}),
+    async run(_input, { user }) {
+      const tasks = listTasks(user.id);
+      return { data: { total: tasks.length, tasks: tasks.map((t) => ({ id: t.id, title: t.title, schedule: t.schedule, enabled: t.enabled, auto_actions: t.allow_actions, last_run: day(t.last_run_at), last_status: t.last_status, last_result: clip(t.last_result, 200) })) } };
+    },
+  },
+  {
+    name: "create_scheduled_task",
+    title: "设置定时任务",
+    kind: "confirm",
+    interactive: true,
+    description:
+      "为用户设置一个定时任务：到了固定时间，你会自动按 prompt 执行一遍（可以查找内容、整理收藏、发帖、评论等），再把结果发给用户。" +
+      "prompt 要写成能独立执行的完整指令（当时没有人可以追问）。repeat：once 仅一次（需要 date）、daily 每天、weekdays 工作日、weekly 每周（需要 weekday）。时间按用户所在时区。" +
+      "allow_actions 默认 false：定时运行时遇到需要用户确认的操作（发帖、评论、私信等）只会汇报而不执行；只有用户明确表示「到时候直接帮我发/做」时才设为 true。需要用户确认。",
+    input: shape(
+      {
+        title: str("任务名称，不超过 40 字", 40, 1),
+        prompt: str("到时间要执行的完整指令", 1000, 2),
+        repeat: oneOf(repeats, "重复方式"),
+        time: str("时间，24 小时制 HH:MM，如 08:30", 5, 5),
+        date: str("仅一次的任务的日期，YYYY-MM-DD", 10, 10),
+        weekday: int("每周任务的星期，0 周日 … 6 周六", 6),
+        allow_actions: bool("是否允许到时自动执行需要确认的操作，默认 false"),
+      },
+      ["title", "prompt", "repeat", "time"],
+    ),
+    async check(input, { user, tz }) {
+      let task;
+      try {
+        task = createTask(user.id, input, { tz, dryRun: true });
+      } catch (error) {
+        throw new ActionError(error.message, error.status || 400);
+      }
+      return preview("设置定时任务", [field("名称", task.title), field("时间", task.schedule), field("自动执行操作", task.allow_actions ? "允许（发帖、评论等会直接执行）" : "不允许（只汇报，不执行需要确认的操作）")], task.prompt);
+    },
+    async run(input, { user, tz }) {
+      let task;
+      try {
+        task = createTask(user.id, input, { tz });
+      } catch (error) {
+        throw new ActionError(error.message, error.status || 400);
+      }
+      return { data: { task_id: task.id, schedule: task.schedule }, summary: `已设置定时任务「${task.title}」（${task.schedule}）` };
+    },
+  },
+  {
+    name: "update_scheduled_task",
+    title: "修改定时任务",
+    kind: "write",
+    interactive: true,
+    description: "启用或暂停（enabled）、改名或改内容、调整时间的定时任务。只传要改的项。task_id 来自 list_scheduled_tasks。",
+    input: shape({
+      task_id: ref("任务 ID"),
+      enabled: bool("启用或暂停"),
+      title: str("新名称", 40, 1),
+      prompt: str("新的执行指令", 1000, 2),
+      repeat: oneOf(repeats, "重复方式"),
+      time: str("HH:MM", 5, 5),
+      date: str("YYYY-MM-DD", 10, 10),
+      weekday: int("0 周日 … 6 周六", 6),
+    }, ["task_id"]),
+    async run(input, { user }) {
+      const { task_id, ...patch } = input;
+      if (!Object.keys(patch).length) throw new ActionError("请指定要修改的内容。");
+      let task;
+      try {
+        task = updateTask(user.id, task_id, patch);
+      } catch (error) {
+        throw new ActionError(error.message, error.status || 400);
+      }
+      return { data: { task_id: task.id, schedule: task.schedule, enabled: task.enabled }, summary: `已更新定时任务「${task.title}」（${task.enabled ? task.schedule : "已暂停"}）` };
+    },
+  },
+  {
+    name: "delete_scheduled_task",
+    title: "删除定时任务",
+    kind: "confirm",
+    interactive: true,
+    description: "删除一个定时任务（task_id 来自 list_scheduled_tasks）。需要用户确认。",
+    input: shape({ task_id: ref("任务 ID") }, ["task_id"]),
+    async check(input, { user }) {
+      const task = getTask(user.id, input.task_id);
+      if (!task) throw new ActionError("没有找到这个定时任务，请先用 list_scheduled_tasks 查看。", 404);
+      return preview("删除定时任务", [field("名称", task.title), field("时间", describeSchedule(task))]);
+    },
+    async run(input, { user }) {
+      if (!deleteTask(user.id, input.task_id)) throw new ActionError("没有找到这个定时任务。", 404);
+      return { data: { ok: true }, summary: "已删除定时任务" };
+    },
+  },
+
   // —— 需要用户确认 ——
   {
     name: "create_post",
@@ -1315,18 +1458,12 @@ const loopback = (address) => {
   return host.includes(":") ? `[${host}]` : host;
 };
 
-// Calls the site's own API on behalf of whoever made `req`, over loopback to
-// the same server, so every route keeps its own checks.
-export function memberApi(req, app) {
-  const token = req.headers.cookie
-    ?.split(";")
-    .map((s) => s.trim())
-    .find((s) => s.startsWith("nmk_session="))
-    ?.slice(12);
-  const base = `http://${loopback(req.socket.localAddress)}:${req.socket.localPort}/api`;
+// Calls the site's own API as a member over loopback to the same server, so
+// every route keeps its own checks. `token` is the member's session cookie.
+export function memberApiWith({ token, base, ip }) {
   const headers = { accept: "application/json", "user-agent": "Naimakes-Assistant" };
   if (token) headers.cookie = "nmk_session=" + token;
-  if (app.get("trust proxy") && req.ip) headers["x-forwarded-for"] = req.ip;
+  if (ip) headers["x-forwarded-for"] = ip;
   return async (method, path, body) => {
     let response;
     try {
@@ -1343,6 +1480,20 @@ export function memberApi(req, app) {
     if (!response.ok) throw new ActionError(data.error || "操作没有成功，请稍后再试。", response.status);
     return data;
   };
+}
+
+// The same, on behalf of whoever made `req`.
+export function memberApi(req, app) {
+  const token = req.headers.cookie
+    ?.split(";")
+    .map((s) => s.trim())
+    .find((s) => s.startsWith("nmk_session="))
+    ?.slice(12);
+  return memberApiWith({
+    token,
+    base: `http://${loopback(req.socket.localAddress)}:${req.socket.localPort}/api`,
+    ip: app.get("trust proxy") && req.ip ? req.ip : "",
+  });
 }
 
 export async function runAction(action, input, ctx) {

@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
-import { existsSync, statSync, unlinkSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, statSync, unlinkSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { fileStillUsed } from "./account-deletion.mjs";
 
@@ -196,5 +196,45 @@ export function installFileLibrary(app, { db, auth, uploadDir, uploadTypes, uplo
     res.json({ ok: true, removed: rows.length });
   });
 
-  return { register, saveBuffer, purgeExpired };
+  /** 对话附件引用图书馆文件时使用：只允许读自己的文件（包括「已删除」里还没清掉的）。 */
+  const find = (userId, id) =>
+    typeof id === "string" ? db.prepare(`SELECT ${columns} FROM library_files WHERE user_id=? AND id=?`).get(userId, id) : undefined;
+  const readBuffer = (url) => {
+    if (!uploadPath.test(url) || !existsSync(fileOn(url))) return null;
+    try {
+      return readFileSync(fileOn(url));
+    } catch {
+      return null;
+    }
+  };
+
+  /** 按文件名搜索，也能通过对话记录（标题或任何一条消息）找到当时在那段对话里附上的文件。 */
+  app.get("/api/library/search", auth, (req, res) => {
+    const q = typeof req.query.q === "string" ? req.query.q.trim().toLowerCase().slice(0, 100) : "";
+    if (!q) return res.json({ matches: [] });
+    const user = req.user.id;
+    const matches = new Map();
+    for (const row of db.prepare("SELECT id FROM library_files WHERE user_id=? AND instr(lower(name),?)>0").all(user, q))
+      matches.set(row.id, null);
+    const chats = db
+      .prepare(
+        `SELECT id,title,messages FROM assistant_chats WHERE user_id=? AND (instr(lower(title),?)>0 OR instr(lower(messages),?)>0)
+         ORDER BY updated_at DESC LIMIT 100`,
+      )
+      .all(user, q, q);
+    const known = new Set(db.prepare("SELECT id FROM library_files WHERE user_id=?").all(user).map((r) => r.id));
+    for (const chat of chats) {
+      let list = [];
+      try {
+        list = JSON.parse(chat.messages);
+      } catch {}
+      for (const message of Array.isArray(list) ? list : [])
+        for (const file of Array.isArray(message?.files) ? message.files : [])
+          if (typeof file?.id === "string" && known.has(file.id) && !matches.has(file.id))
+            matches.set(file.id, { chat_id: chat.id, title: chat.title || "未命名对话" });
+    }
+    res.json({ matches: [...matches].map(([id, via]) => ({ id, via })) });
+  });
+
+  return { register, saveBuffer, purgeExpired, find, readBuffer };
 }
