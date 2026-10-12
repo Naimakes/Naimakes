@@ -6,7 +6,8 @@ export type ShareTarget =
   | { type: "collection"; collection: Collection }
   | { type: "board"; board: Category }
   | { type: "message"; message: Message }
-  | { type: "notice"; notice: Notification };
+  | { type: "notice"; notice: Notification }
+  | { type: "assistant"; chat: { id: string; title: string; count: number; shared_at?: number } };
 
 export const shareLabels: Record<ShareTarget["type"], string> = {
   post: "讨论",
@@ -14,6 +15,7 @@ export const shareLabels: Record<ShareTarget["type"], string> = {
   board: "版块",
   message: "私信",
   notice: "通知",
+  assistant: "对话",
 };
 
 export function shareUrl(target: ShareTarget) {
@@ -33,7 +35,9 @@ export function sharePayload(target: ShareTarget) {
         ? target.board.id
         : target.type === "message"
           ? target.message.id
-          : target.notice.id;
+          : target.type === "assistant"
+            ? target.chat.id
+            : target.notice.id;
   return { share: { type: target.type, id } };
 }
 
@@ -52,3 +56,9 @@ export const setShareHandler = (next: typeof handler) => {
   handler = next;
 };
 export const openShare = (target: ShareTarget) => handler?.(target);
+
+let chatHandler: ((token: string) => void) | null = null;
+export const setSharedChatHandler = (next: typeof chatHandler) => {
+  chatHandler = next;
+};
+export const openSharedChat = (token: string) => chatHandler?.(token);

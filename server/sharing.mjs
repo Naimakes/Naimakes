@@ -1,7 +1,8 @@
+import { randomBytes } from "node:crypto";
 import { db } from "./database.mjs";
 import { boardModeration, getBoard } from "./boards.mjs";
 
-const kinds = ["collection", "board", "message", "notice"];
+const kinds = ["collection", "board", "message", "notice", "assistant"];
 const clip = (text, limit) => {
   const chars = Array.from(String(text || "").replace(/\s+/g, " ").trim());
   return chars.length > limit ? chars.slice(0, limit).join("").trimEnd() + "…" : chars.join("");
@@ -17,6 +18,27 @@ const person = (row, prefix = "") =>
       }
     : null;
 
+// Publish (or refresh) the read-only snapshot of one of the user's assistant chats and return its link token.
+export function shareAssistantChat(userId, chatId) {
+  const row = db.prepare("SELECT title,messages,share_token FROM assistant_chats WHERE id=? AND user_id=?").get(chatId, userId);
+  if (!row) return null;
+  let count = 0;
+  try {
+    count = JSON.parse(row.messages).length;
+  } catch {}
+  const token = row.share_token || randomBytes(12).toString("base64url");
+  const now = Date.now();
+  db.prepare("UPDATE assistant_chats SET share_token=?,share_title=?,share_messages=?,shared_at=? WHERE id=? AND user_id=?").run(
+    token,
+    row.title,
+    row.messages,
+    now,
+    chatId,
+    userId,
+  );
+  return { token, shared_at: now, title: row.title, count };
+}
+
 export function prepareShare(user, share) {
   if (share === undefined || share === null || share === "") return { stored: "" };
   if (
@@ -27,6 +49,11 @@ export function prepareShare(user, share) {
     share.id.length > 160
   )
     return { error: "分享的内容不存在。" };
+  if (share.type === "assistant") {
+    const shared = shareAssistantChat(user.id, share.id);
+    if (!shared) return { error: "这段对话不存在。" };
+    return { stored: JSON.stringify({ type: "assistant", id: shared.token, snapshot: { title: clip(shared.title, 60), count: shared.count } }) };
+  }
   if (share.type === "collection") {
     const folder = db.prepare("SELECT id,user_id,is_public FROM collections WHERE id=?").get(share.id);
     if (!folder || (!folder.is_public && folder.user_id !== user.id))
@@ -105,6 +132,16 @@ export function shareCard(stored, viewer) {
   if (!share || !kinds.includes(share.type)) return null;
   if (share.type === "message" || share.type === "notice")
     return { type: share.type, id: share.id, ...(share.snapshot || {}) };
+  if (share.type === "assistant") {
+    const row = db
+      .prepare(
+        `SELECT c.shared_at,c.share_title,u.id,u.name,u.initials,u.avatar,u.status
+         FROM assistant_chats c JOIN users u ON u.id=c.user_id WHERE c.share_token=?`,
+      )
+      .get(String(share.id));
+    if (!row || row.status === "deleted") return { type: "assistant", id: share.id, unavailable: "这段对话已取消分享" };
+    return { type: "assistant", id: share.id, title: row.share_title || share.snapshot?.title || "", count: share.snapshot?.count || 0, shared_at: row.shared_at, owner: person(row) };
+  }
   if (share.type === "collection") {
     const folder = db
       .prepare(
@@ -163,11 +200,12 @@ export function shareCard(stored, viewer) {
   };
 }
 
-const typeNames = { collection: "收藏夹", board: "版块", message: "私信", notice: "通知" };
+const typeNames = { collection: "收藏夹", board: "版块", message: "私信", notice: "通知", assistant: "对话" };
 export function sharePreview(card) {
   if (!card) return "";
   if (card.unavailable) return `分享了一个${typeNames[card.type]}`;
   if (card.type === "collection" || card.type === "board")
     return `分享了${typeNames[card.type]}「${card.name}」`;
+  if (card.type === "assistant") return `分享了对话「${card.title || "未命名对话"}」`;
   return `转发了一条${typeNames[card.type]}`;
 }

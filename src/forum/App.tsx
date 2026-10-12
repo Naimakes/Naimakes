@@ -95,7 +95,7 @@ import {
 import Library from "./library/Library";
 import FeaturedRail from "./discover/FeaturedRail";
 import ShareSheet from "./share/ShareSheet";
-import { openShare, setShareHandler, type ShareTarget } from "./share/share-api";
+import { openShare, setShareHandler, setSharedChatHandler, type ShareTarget } from "./share/share-api";
 import { RichContent } from "./posts/rich-text/RichContent";
 import { QuoteList } from "./posts/Quotes";
 import ContextMenu, { useContextMenu } from "./ui/ContextMenu";
@@ -147,6 +147,14 @@ const MessageCenter = lazy(() => import("./messages/MessageCenter"));
 const PostManager = lazy(() => import("./insights/PostManager"));
 const BoardManager = lazy(() => import("./insights/BoardManager"));
 const AssistantDock = lazy(() => import("../assistant/AssistantDock"));
+const sharedChatToken = (() => {
+  try {
+    const token = new URLSearchParams(location.search).get("nmk-chat") || "";
+    return /^[A-Za-z0-9_-]{10,64}$/.test(token) ? token : "";
+  } catch {
+    return "";
+  }
+})();
 const GuestSettings = lazy(() => import("./settings/GuestSettings"));
 const loadMarkdown = () => import("./posts/MarkdownContent");
 const MarkdownContent = lazy(loadMarkdown);
@@ -194,7 +202,8 @@ export default function App() {
   const [settingsFocus, setSettingsFocus] = useState<{ section: string; nonce: number } | null>(() =>
     location.pathname === "/settings" && location.hash.length > 1 ? { section: location.hash.slice(1), nonce: Date.now() } : null,
   );
-  const [assistantReady, setAssistantReady] = useState(false);
+  const [assistantReady, setAssistantReady] = useState(!!sharedChatToken);
+  const [sharedChat, setSharedChat] = useState<{ token: string; nonce: number } | null>(sharedChatToken ? { token: sharedChatToken, nonce: 0 } : null);
   const [page, setPage] = useState(currentPage),
     [category, setCategory] = useState(
       location.pathname.startsWith("/topics/")
@@ -1211,6 +1220,14 @@ export default function App() {
     }
   }
   const share = (p: Post) => openShare({ type: "post", post: p });
+  useEffect(() => {
+    setSharedChatHandler((token) => {
+      setModal("");
+      setAssistantReady(true);
+      setSharedChat({ token, nonce: Date.now() });
+    });
+    return () => setSharedChatHandler(null);
+  }, []);
   useEffect(() => {
     setShareHandler((target) => {
       setMoreMenu(false);
@@ -3705,7 +3722,7 @@ export default function App() {
       </div>
       {assistantReady && (
         <Suspense fallback={null}>
-          <AssistantDock userId={user?.id || null} />
+          <AssistantDock userId={user?.id || null} shared={sharedChat} />
         </Suspense>
       )}
     </LayoutGroup>

@@ -3,11 +3,14 @@ import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "motion/react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { ArrowUp, ArrowUpRight, Ban, Check, ChevronRight, Clock, FileText, LoaderCircle, Minus, Plus, RotateCcw, Square, SquarePen, X } from "lucide-react";
+import { ArrowUp, ArrowUpRight, Ban, Check, ChevronRight, Clock, FileText, History, LoaderCircle, Minus, Plus, RotateCcw, Square, SquarePen, X } from "lucide-react";
 import { LiquidButton } from "../forum/motion/LiquidButton";
 import { useMotionPreferences } from "../forum/motion/motion-preferences";
 import { ThinkingSwitch } from "./ThinkingSwitch";
 import AssistantDetails from "./AssistantDetails";
+import AssistantHistory from "./AssistantHistory";
+import { openShare } from "../forum/share/share-api";
+import AssistantShared from "./AssistantShared";
 import { BotFigure, type BotLook } from "./BotFigure";
 import { accept, MAX_FILES, readAttachment, type Attachment } from "./attachments";
 import { ask, cancelAction, clearChat, confirmAction, markRead, retryLast, stopReply, switchOwner, useChat, type AgentAction, type ChatMessage } from "./chat";
@@ -276,14 +279,15 @@ function useTopLayerHost() {
   return host;
 }
 
-export default function AssistantDock({ userId }: { userId: string | null }) {
+export default function AssistantDock({ userId, shared = null }: { userId: string | null; shared?: { token: string; nonce: number } | null }) {
+  const [sharedToken, setSharedToken] = useState("");
   const host = useTopLayerHost();
   const prefs = usePrefs();
   const chat = useChat();
   const { reduced } = useMotionPreferences();
   const notify = useNotify();
   const [open, setOpen] = useState(false);
-  const [view, setView] = useState<"chat" | "details">("chat");
+  const [view, setView] = useState<"chat" | "details" | "history" | "shared">("chat");
   const [settled, setSettled] = useState<"success" | "error" | null>(null);
   const [box, setBox] = useState<Box | null>(null);
   const [mood, setMood] = useState("idle");
@@ -515,6 +519,18 @@ export default function AssistantDock({ userId }: { userId: string | null }) {
       .catch(() => setAiReady(null));
   }, [layoutPanel]);
 
+  useEffect(() => {
+    if (!shared) return;
+    setSharedToken(shared.token);
+    try {
+      const url = new URL(location.href);
+      url.searchParams.delete("nmk-chat");
+      history.replaceState(history.state, "", url.pathname + url.search + url.hash);
+    } catch {}
+    setView("shared");
+    openPanel();
+  }, [shared, openPanel]);
+
   const closePanel = useCallback(() => {
     setOpen(false);
     setView("chat");
@@ -528,7 +544,7 @@ export default function AssistantDock({ userId }: { userId: string | null }) {
     window.visualViewport?.addEventListener("resize", relayout);
     const escape = (event: KeyboardEvent) => {
       if (event.key !== "Escape" || event.defaultPrevented) return;
-      if (viewRef.current === "details") setView("chat");
+      if (viewRef.current !== "chat") setView("chat");
       else closePanel();
     };
     document.addEventListener("keydown", escape);
@@ -786,7 +802,7 @@ export default function AssistantDock({ userId }: { userId: string | null }) {
       if (event.key === "Escape" && open) {
         event.preventDefault();
         event.stopPropagation();
-        if (view === "details") setView("chat");
+        if (view !== "chat") setView("chat");
         else closePanel();
       }
     }}>
@@ -859,11 +875,16 @@ export default function AssistantDock({ userId }: { userId: string | null }) {
                   </span>
                   <span className="assistant-identity-text">
                     <strong>Naimakes</strong>
-                    <small aria-live="polite">{status}</small>
+                    <small aria-live="polite" title={chat.phase === "idle" ? chat.title : undefined}>
+                      {chat.phase === "idle" && chat.title ? chat.title : status}
+                    </small>
                   </span>
                   <ChevronRight size={16} aria-hidden="true" />
                 </LiquidButton>
                 <div className="assistant-head-actions">
+                  <LiquidButton type="button" className="icon-button assistant-icon" aria-label="历史对话" title="历史对话" onClick={() => setView("history")}>
+                    <History size={16} />
+                  </LiquidButton>
                   <LiquidButton type="button" className="icon-button assistant-icon" aria-label="开始新对话" title="新对话" disabled={!chat.messages.length} onClick={newChat}>
                     <SquarePen size={16} />
                   </LiquidButton>
@@ -1013,6 +1034,51 @@ export default function AssistantDock({ userId }: { userId: string | null }) {
                     onClose={() => { stopReply(); closePanel(); markRead(); }}
                     onNewChat={newChat}
                     onSettings={() => follow("/settings#assistant")}
+                  />
+                </motion.div>
+              )}
+              {view === "history" && (
+                <motion.div
+                  key="history"
+                  className="assistant-layer"
+                  initial={{ opacity: 0, x: shift }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: shift }}
+                  transition={reduced ? { duration: 0.01 } : { type: "spring", stiffness: 380, damping: 36 }}
+                >
+                  <AssistantHistory
+                    onShare={(target) => {
+                      closePanel();
+                      openShare({ type: "assistant", chat: target });
+                    }}
+                    onBack={() => setView("chat")}
+                    onClose={() => { stopReply(); closePanel(); markRead(); }}
+                    onOpened={() => {
+                      setView("chat");
+                      requestAnimationFrame(() => input.current?.focus({ preventScroll: true }));
+                    }}
+                  />
+                </motion.div>
+              )}
+              {view === "shared" && sharedToken && (
+                <motion.div
+                  key="shared"
+                  className="assistant-layer"
+                  initial={{ opacity: 0, x: shift }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: shift }}
+                  transition={reduced ? { duration: 0.01 } : { type: "spring", stiffness: 380, damping: 36 }}
+                >
+                  <AssistantShared
+                    token={sharedToken}
+                    Message={Message}
+                    onLink={follow}
+                    onBack={() => setView("chat")}
+                    onClose={() => { stopReply(); closePanel(); markRead(); }}
+                    onSaved={() => {
+                      setView("chat");
+                      requestAnimationFrame(() => input.current?.focus({ preventScroll: true }));
+                    }}
                   />
                 </motion.div>
               )}

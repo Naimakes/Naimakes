@@ -358,7 +358,7 @@ export type Message = {
   created_at: number;
 };
 type SharePerson = { id: string; name: string; initials: string; avatar?: string };
-export type ShareUnavailable = { type: "collection" | "board"; id: string; unavailable: string };
+export type ShareUnavailable = { type: "collection" | "board" | "assistant"; id: string; unavailable: string };
 export const isShareUnavailable = (card: ShareCardData): card is ShareUnavailable => typeof card.unavailable === "string";
 export type ShareCardData =
   | ShareUnavailable
@@ -391,7 +391,8 @@ export type ShareCardData =
       creator: SharePerson | null;
     }
   | { type: "message"; id: string; unavailable?: undefined; text: string; files: number; quote: string; mine: boolean; created_at: number }
-  | { type: "notice"; id: string; unavailable?: undefined; kind: string; text: string; preview: string; created_at: number };
+  | { type: "notice"; id: string; unavailable?: undefined; kind: string; text: string; preview: string; created_at: number }
+  | { type: "assistant"; id: string; unavailable?: undefined; title: string; count: number; shared_at: number; owner: SharePerson | null };
 export type LiveNotice = {
   id: string;
   kind: string;
