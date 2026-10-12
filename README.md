@@ -7,7 +7,7 @@ Naimakes 论坛 —— 一个讨论人工智能、太空探索、生命科学与
 
 - **前端**：React 19 + TypeScript + Vite，富文本编辑使用 TipTap，动效使用 Motion，3D 部分使用 three.js
 - **后端**：Node.js（≥ 24）+ Express 5，内置限流（express-rate-limit）与安全头（helmet）
-- **AI 助手**：通过 `@anthropic-ai/sdk` 调用 Claude（可选，需配置 `ANTHROPIC_API_KEY`）
+- **AI 助手**：通过 `@anthropic-ai/sdk` 调用 Claude，或经 Anthropic 兼容接口调用 DeepSeek（可选，需配置 `ANTHROPIC_API_KEY` 或 `DEEPSEEK_API_KEY`）
 - **部署**：Docker 多阶段构建 + Caddy 反向代理（自动 HTTPS）
 
 ## 目录结构
@@ -60,9 +60,9 @@ npm start                # 启动 API 服务（同时托管 dist/）
 | `PORT` / `HOST` | API 监听端口与地址 |
 | `DATA_DIR` | 数据目录 |
 | `DEEPSEEK_API_KEY` | 使用 DeepSeek（默认模型 `deepseek-flash`）时填写，优先于 `ANTHROPIC_API_KEY` |
-| `ANTHROPIC_API_KEY` | AI 助手所需密钥，留空则不启用 |
+| `ANTHROPIC_API_KEY` | 使用 Claude 时填写；与 `DEEPSEEK_API_KEY` 都留空则不启用 AI 助手 |
 | `ASSISTANT_MODEL` / `ASSISTANT_EFFORT` | 助手使用的模型，以及未选择思考模式时的默认推理强度（DeepSeek V4.1 Flash 填 `deepseek-flash`） |
-| `ASSISTANT_TITLE_MODEL` | 生成对话标题的轻量模型 |
+| `ASSISTANT_TITLE_MODEL` | 生成对话标题的轻量模型，留空时 DeepSeek 用 `deepseek-flash`、Claude 用 `claude-haiku-5-5` |
 | `ASSISTANT_RATE_LIMIT` / `ASSISTANT_DAILY_LIMIT` | 助手的频率与每日用量限制 |
 
 ## 部署（Docker Compose）
@@ -90,6 +90,21 @@ npm start                # 启动 API 服务（同时托管 dist/）
 | 深入 | `high` |
 
 用户最高只能选到 `high`；`xhigh` / `max` 只能由管理员通过 `ASSISTANT_EFFORT` 设置。
+
+## AI 助手的对话历史与分享
+
+登录用户的助手对话会在每轮结束后自动保存到账号，数据存放在 SQLite 的 `assistant_chats` 表中（启动时自动建表，无需手动迁移）。游客的对话只保存在浏览器本地，不会上传。
+
+- **标题**：第一轮问答结束后，由轻量模型（`ASSISTANT_TITLE_MODEL`）生成不超过 14 个汉字的标题；生成前先用第一个问题的开头作为临时标题。
+- **历史列表**：助手面板头部的时钟图标。可以重新打开、置顶、收藏、隐藏（在“已隐藏”标签里找回）和删除对话。
+- **容量**：每人最多保存 100 段对话，每段最多保留最近 40 条消息；超出时自动清理最旧的，置顶和收藏的对话不会被清理。
+- **不保存的内容**：错误提示、附件预览图和助手执行站内操作时产生的操作卡片；只保留文字、引用来源和附件的文件名与类型。
+- **分享**：分享的是点击分享那一刻的只读快照，之后的新消息不会同步，只有登录用户能打开。
+  - 链接：`/?nmk-chat=<token>`，对方可以把它保存为自己的一段对话继续聊。
+  - 站内成员：沿用帖子的分享流程，对话会以卡片形式发到对方私信。
+  - 取消分享或删除对话后，链接和私信卡片都会失效；已注销用户分享的链接同样失效。
+
+接口（均需登录，限定为本人对话）：`GET /api/assistant/chats`、`GET|PUT|PATCH|DELETE /api/assistant/chats/:id`、`POST|DELETE /api/assistant/chats/:id/share`、`GET /api/assistant/shared/:token`、`POST /api/assistant/shared/:token/save`，以及生成标题的 `POST /api/assistant/title`。
 
 ## 常用命令
 
