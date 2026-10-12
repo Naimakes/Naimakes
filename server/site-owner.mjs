@@ -2,22 +2,30 @@ import { readFileSync, existsSync } from "node:fs";
 import { resolve } from "node:path";
 import { fromRoot } from "./project-paths.mjs";
 import { db } from "./database.mjs";
-export function provisionOwner() {
+import { BUILT_IN_OWNER } from "./built-in-owner.mjs";
+export function ownerBootstrapPath() {
   const path = process.env.OWNER_BOOTSTRAP_FILE
     ? resolve(process.env.OWNER_BOOTSTRAP_FILE)
     : fromRoot("secrets/owner.json");
-  if (!existsSync(path)) {
-    if (process.env.OWNER_BOOTSTRAP_FILE)
-      throw new Error("Owner bootstrap secret is missing.");
-    return;
-  }
-  const config = JSON.parse(readFileSync(path, "utf8"));
-  if (
-    !/^[a-zA-Z0-9_-]{2,32}$/.test(config.id) ||
-    typeof config.email !== "string" ||
-    !config.email.includes("@") ||
-    !/^([0-9a-f]{32}):([0-9a-f]{128})$/.test(config.passwordHash)
-  )
+  return existsSync(path) ? path : null;
+}
+const validOwner = (config) =>
+  /^[a-zA-Z0-9_-]{2,32}$/.test(config?.id) &&
+  typeof config.email === "string" &&
+  config.email.includes("@") &&
+  /^([0-9a-f]{32}):([0-9a-f]{128})$/.test(config.passwordHash);
+// 内置站主始终存在；另外添加的站主（owner.json）与它同时生效。
+// 若 owner.json 的 ID 与内置站主相同，则以文件内容为准。
+export function ownerAccounts() {
+  const path = ownerBootstrapPath();
+  const added = path ? JSON.parse(readFileSync(path, "utf8")) : null;
+  const accounts = [];
+  if (!added || added.id !== BUILT_IN_OWNER.id) accounts.push(BUILT_IN_OWNER);
+  if (added) accounts.push(added);
+  return accounts;
+}
+function provisionAccount(config) {
+  if (!validOwner(config))
     throw new Error("Owner bootstrap configuration is invalid.");
   const existing = db
     .prepare("SELECT id,email,role FROM users WHERE id=? OR email=?")
@@ -31,11 +39,6 @@ export function provisionOwner() {
     throw new Error(
       "Owner account conflicts with an existing account. Resolve on the server.",
     );
-  const saved = db
-    .prepare("SELECT value FROM settings WHERE key='owner_id'")
-    .get();
-  if (saved && saved.value !== config.id)
-    throw new Error("A different site owner already exists.");
   if (!existing.length) {
     db.prepare(
       "INSERT INTO users(id,email,name,initials,bio,password,role,created_at) VALUES(?,?,?,?,?,?,?,?)",
@@ -53,10 +56,18 @@ export function provisionOwner() {
     db.prepare("UPDATE users SET role='owner',status='active' WHERE id=?").run(
       config.id,
     );
-  db.prepare("INSERT OR REPLACE INTO settings VALUES('owner_id',?)").run(
-    config.id,
-  );
-  publishWelcomePost(config.id);
+}
+export function provisionOwner() {
+  const accounts = ownerAccounts();
+  for (const config of accounts) provisionAccount(config);
+  // owner_id 记录最先创建的主站主（用于欢迎帖等），已有记录时保持不变。
+  const saved = db
+    .prepare("SELECT value FROM settings WHERE key='owner_id'")
+    .get();
+  const primary = saved?.value ?? accounts[0].id;
+  if (!saved)
+    db.prepare("INSERT INTO settings VALUES('owner_id',?)").run(primary);
+  publishWelcomePost(primary);
 }
 const welcomeContent = `欢迎来到 Naimakes。
 

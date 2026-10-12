@@ -1,6 +1,7 @@
 import { accessSync, constants, existsSync, readFileSync, statSync } from "node:fs";
 import { resolve } from "node:path";
 import { fromRoot, projectRoot, dirFromEnv } from "../server/project-paths.mjs";
+import { BUILT_IN_OWNER } from "../server/built-in-owner.mjs";
 import { verifyProductionBuild } from "./verify-build.mjs";
 
 const flag = process.argv.slice(2).find((a) => a.startsWith("--"))?.slice(2);
@@ -56,12 +57,14 @@ if (existsSync(fromRoot("dist/index.html"))) {
 const ownerPath = process.env.OWNER_BOOTSTRAP_FILE
   ? resolve(process.env.OWNER_BOOTSTRAP_FILE)
   : fromRoot("secrets/owner.json");
+const ownerFromFile = existsSync(ownerPath);
 check(
-  existsSync(ownerPath),
-  "Owner bootstrap file exists",
-  "恢复你私有的 secrets/owner.json，或运行 npm run create-site-owner -- ID email@example.com 新建站主。",
+  ownerFromFile ||
+    /^[0-9a-f]{32}:[0-9a-f]{128}$/.test(BUILT_IN_OWNER.passwordHash),
+  ownerFromFile ? "Owner bootstrap file exists" : "Built-in site owner is configured",
+  "检查 server/site-owner.mjs 里的 BUILT_IN_OWNER。",
 );
-if (existsSync(ownerPath)) {
+if (ownerFromFile) {
   try {
     const owner = JSON.parse(readFileSync(ownerPath, "utf8"));
     check(
