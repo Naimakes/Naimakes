@@ -716,6 +716,34 @@ export default function App() {
     if (detail?.id && detail.title) rememberViewed({ id: detail.id, title: detail.title });
   }, [detail?.id, detail?.title]);
   useEffect(() => {
+    const refresh = () => {
+      syncMe().catch(() => {});
+      refreshStats();
+      setVersion((v) => v + 1);
+      if (!detail?.id) return;
+      const seq = detailSequence.current;
+      api("/posts/" + encodeURIComponent(detail.id))
+        .then((r) => {
+          if (seq !== detailSequence.current) return;
+          setDetail(r.post);
+          setComments(r.comments);
+        })
+        .catch((e) => {
+          if (seq === detailSequence.current && (e as { status?: number }).status === 404) closeDetail();
+        });
+    };
+    let timer = 0;
+    const schedule = () => {
+      clearTimeout(timer);
+      timer = window.setTimeout(refresh, 200);
+    };
+    window.addEventListener("nmk-assistant-action", schedule);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener("nmk-assistant-action", schedule);
+    };
+  }, [detail?.id, syncMe, refreshStats]);
+  useEffect(() => {
     const start = () => setAssistantReady(true);
     const idle = (window as { requestIdleCallback?: (fn: () => void, options?: { timeout: number }) => number }).requestIdleCallback;
     if (idle) {

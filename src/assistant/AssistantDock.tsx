@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "motion/react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { ArrowUp, ArrowUpRight, ChevronRight, FileText, History, Minus, Plus, RotateCcw, Square, SquarePen, X } from "lucide-react";
+import { ArrowUp, ArrowUpRight, Ban, Check, ChevronRight, Clock, FileText, History, LoaderCircle, Minus, Plus, RotateCcw, Square, SquarePen, X } from "lucide-react";
 import { LiquidButton } from "../forum/motion/LiquidButton";
 import { useMotionPreferences } from "../forum/motion/motion-preferences";
 import { ThinkingSwitch } from "./ThinkingSwitch";
@@ -13,7 +13,7 @@ import { openShare } from "../forum/share/share-api";
 import AssistantShared from "./AssistantShared";
 import { BotFigure, type BotLook } from "./BotFigure";
 import { accept, MAX_FILES, readAttachment, type Attachment } from "./attachments";
-import { ask, clearChat, markRead, retryLast, stopReply, switchOwner, useChat, type ChatMessage } from "./chat";
+import { ask, cancelAction, clearChat, confirmAction, markRead, retryLast, stopReply, switchOwner, useChat, type AgentAction, type ChatMessage } from "./chat";
 import { isPostRequest, pickMood, taskDifficulty } from "./mood";
 import { go, recentlyViewed } from "./nav";
 import { connectAccount, readPosition, savePosition, useNotify, usePrefs } from "./prefs";
@@ -75,6 +75,68 @@ function sourceLabel(type: string) {
   return type === "board" ? "版块" : type === "announcement" ? "公告" : "讨论";
 }
 
+const actionIcons = { pending: Clock, running: LoaderCircle, done: Check, failed: X, cancelled: Ban, expired: Clock };
+
+function actionNote(action: AgentAction) {
+  if (action.status === "pending") return "点「确认」后才会执行";
+  if (action.status === "running") return "正在执行…";
+  if (action.status === "done") return action.summary || "已完成";
+  if (action.status === "cancelled") return "已取消";
+  return action.error || (action.status === "expired" ? "确认已超时" : "没有成功");
+}
+
+function ActionCard({ action, onLink }: { action: AgentAction; onLink: (href: string) => void }) {
+  const Icon = actionIcons[action.status] || Clock;
+  const preview = action.preview;
+  const deciding = !!preview && (action.status === "pending" || action.status === "running");
+  return (
+    <div className={"assistant-action is-" + action.status} role="group" aria-label={preview?.heading || action.title}>
+      <div className="assistant-action-head">
+        <span className="assistant-action-icon">
+          <Icon size={14} aria-hidden="true" />
+        </span>
+        <span className="assistant-action-body">
+          <strong>{preview?.heading || action.title}</strong>
+          <small>{actionNote(action)}</small>
+        </span>
+        {action.status === "done" && action.url && (
+          <LiquidButton type="button" className="assistant-action-open" aria-label="查看" onClick={() => onLink(action.url!)}>
+            <ArrowUpRight size={14} />
+          </LiquidButton>
+        )}
+      </div>
+      {deciding && (
+        <>
+          {preview.fields.length > 0 && (
+            <dl className="assistant-action-fields">
+              {preview.fields.map((item) => (
+                <div key={item.label}>
+                  <dt>{item.label}</dt>
+                  <dd>{item.value}</dd>
+                </div>
+              ))}
+            </dl>
+          )}
+          {preview.body && <p className="assistant-action-text">{preview.body}</p>}
+          {action.error && (
+            <p className="assistant-action-error" role="alert">
+              {action.error}
+            </p>
+          )}
+          <div className="assistant-action-buttons">
+            <LiquidButton type="button" className="assistant-chip is-compact" disabled={action.status === "running"} onClick={() => cancelAction(action)}>
+              取消
+            </LiquidButton>
+            <LiquidButton type="button" className="assistant-chip is-compact is-primary" disabled={action.status === "running"} onClick={() => confirmAction(action)}>
+              {action.status === "running" ? "执行中…" : "确认"}
+            </LiquidButton>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 function Message({ message, onLink, onRetry, last }: { message: ChatMessage; onLink: (href: string) => void; onRetry: () => void; last: boolean }) {
   if (message.role === "user")
     return (
@@ -97,7 +159,8 @@ function Message({ message, onLink, onRetry, last }: { message: ChatMessage; onL
       </div>
     );
   const sources = (message.sources || []).slice(0, 4);
-  const empty = !message.content && !message.error;
+  const actions = message.actions || [];
+  const empty = !message.content && !message.error && !actions.length;
   if (empty) return null;
   return (
     <div className="assistant-msg is-bot">
@@ -130,6 +193,13 @@ function Message({ message, onLink, onRetry, last }: { message: ChatMessage; onL
               重试
             </LiquidButton>
           )}
+        </div>
+      )}
+      {actions.length > 0 && (
+        <div className="assistant-actions">
+          {actions.map((action) => (
+            <ActionCard key={action.id} action={action} onLink={onLink} />
+          ))}
         </div>
       )}
       {sources.length > 0 && (
@@ -495,6 +565,14 @@ export default function AssistantDock({ userId, shared = null }: { userId: strin
     if (near) el.scrollTo({ top: el.scrollHeight, behavior: reduced ? "auto" : "smooth" });
   }, [chat.messages, open, reduced]);
 
+  const pending = chat.messages.reduce((n, m) => n + (m.actions?.filter((a) => a.status === "pending").length || 0), 0);
+  const seenPending = useRef(pending);
+  useEffect(() => {
+    const el = list.current;
+    if (open && el && pending > seenPending.current) el.scrollTo({ top: el.scrollHeight, behavior: reduced ? "auto" : "smooth" });
+    seenPending.current = pending;
+  }, [pending, open, reduced]);
+
   useLayoutEffect(() => {
     if (open && list.current) list.current.scrollTop = list.current.scrollHeight;
   }, [open]);
@@ -692,17 +770,19 @@ export default function AssistantDock({ userId, shared = null }: { userId: strin
                   : "idle";
   const headState = agentState === "idle" && draft.trim() ? "listening" : agentState;
   const status =
-    chat.phase === "searching"
-      ? hasFiles
-        ? "正在查看附件…"
-        : "正在检索本站…"
-      : chat.phase === "writing"
-        ? drafting
-          ? "正在起草帖子…"
-          : "正在整理回答…"
-        : aiReady === false
-          ? "站内搜索模式"
-          : "已连接本站知识库";
+    chat.phase !== "idle" && chat.activity
+      ? chat.activity
+      : chat.phase === "searching"
+        ? hasFiles
+          ? "正在查看附件…"
+          : "正在检索本站…"
+        : chat.phase === "writing"
+          ? drafting
+            ? "正在起草帖子…"
+            : "正在整理回答…"
+          : aiReady === false
+            ? "站内搜索模式"
+            : "已连接本站知识库";
 
   const panelStyle = box
     ? ({ left: box.left, top: box.top, width: box.width, height: box.height, transformOrigin: box.origin } as CSSProperties)
@@ -821,7 +901,7 @@ export default function AssistantDock({ userId, shared = null }: { userId: strin
                 {chat.messages.length === 0 ? (
                   <div className="assistant-welcome">
                     <h3>你好，我是 Naimakes。</h3>
-                    <p>可以帮你查找本站文章、推荐感兴趣的讨论，也能讲讲网站怎么用。</p>
+                    <p>可以帮你查找本站文章、推荐感兴趣的讨论，也能讲讲网站怎么用。登录后，还能替你关注、收藏、发帖、评论和发私信。</p>
                     <div className="assistant-chips">
                       {(recent ? [`「${recent.title.length > 14 ? recent.title.slice(0, 14) + "…" : recent.title}」讲了什么？`, ...suggestions.slice(0, 3)] : suggestions).map((text) => (
                         <LiquidButton key={text} type="button" className="assistant-chip" onClick={() => send(text)}>
