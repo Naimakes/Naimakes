@@ -1,24 +1,37 @@
 import { useSyncExternalStore } from "react";
-import { getPrefs } from "./prefs";
+import { adoptPrefs, getPrefs, type AssistantPrefs } from "./prefs";
 import { info, type Attachment, type FileInfo } from "./attachments";
 
 export type Source = { type: string; id: string; title: string; url: string; board: string; excerpt: string };
+export type ActionStatus = "pending" | "running" | "done" | "failed" | "cancelled" | "expired";
+export type AgentAction = {
+  id: string;
+  name: string;
+  title: string;
+  status: ActionStatus;
+  summary?: string;
+  url?: string;
+  error?: string;
+  preview?: { heading: string; fields: { label: string; value: string }[]; body: string };
+  effect?: { look?: Partial<AssistantPrefs>; updated_at?: number };
+};
 export type ChatMessage = {
   id: string;
   role: "user" | "assistant";
   content: string;
   sources?: Source[];
+  actions?: AgentAction[];
   error?: string;
   offline?: boolean;
   files?: FileInfo[];
   at: number;
 };
 export type Phase = "idle" | "searching" | "writing";
-type ChatState = { messages: ChatMessage[]; phase: Phase; unread: boolean };
+type ChatState = { messages: ChatMessage[]; phase: Phase; unread: boolean; activity: string };
 
 const LIMIT = 40;
 let owner = "guest";
-let state: ChatState = { messages: load(owner), phase: "idle", unread: false };
+let state: ChatState = { messages: load(owner), phase: "idle", unread: false, activity: "" };
 let controller: AbortController | null = null;
 const sent = new Map<string, Attachment[]>();
 const listeners = new Set<() => void>();
@@ -32,7 +45,13 @@ function load(id: string): ChatMessage[] {
   try {
     const raw = localStorage.getItem(keyOf(id));
     const list = raw ? (JSON.parse(raw) as ChatMessage[]) : [];
-    return Array.isArray(list) ? list.filter((m) => m && typeof m.content === "string").slice(-LIMIT) : [];
+    if (!Array.isArray(list)) return [];
+    // A confirmation still in flight when the page closed can be pressed again; the server answers with its real state.
+    const settle = (a: AgentAction) => (a.status === "running" ? { ...a, status: "pending" as const } : a);
+    return list
+      .filter((m) => m && typeof m.content === "string")
+      .slice(-LIMIT)
+      .map((m) => (m.actions ? { ...m, actions: m.actions.map(settle) } : m));
   } catch {
     return [];
   }
@@ -59,13 +78,13 @@ export function switchOwner(id: string | null) {
   controller?.abort();
   sent.clear();
   owner = next;
-  set({ messages: load(owner), phase: "idle", unread: false });
+  set({ messages: load(owner), phase: "idle", unread: false, activity: "" });
 }
 
 export function clearChat() {
   controller?.abort();
   sent.clear();
-  set({ messages: [], phase: "idle", unread: false }, true);
+  set({ messages: [], phase: "idle", unread: false, activity: "" }, true);
 }
 
 export function markRead() {
@@ -84,6 +103,63 @@ function patchLast(update: (message: ChatMessage) => ChatMessage, save = false) 
   set({ messages }, save);
 }
 
+const actionLabel: Record<ActionStatus, string> = {
+  pending: "等待确认",
+  running: "正在执行",
+  done: "已完成",
+  failed: "失败",
+  cancelled: "已取消",
+  expired: "已超时",
+};
+
+// Lets the model see what happened to the actions it took in earlier turns.
+function withRecords(message: ChatMessage) {
+  const lines = (message.actions || []).map(
+    (a) => `[操作记录] ${a.preview?.heading || a.title}：${actionLabel[a.status]}${a.summary && a.status === "done" ? "，" + a.summary : ""}${a.error ? "，" + a.error : ""}`,
+  );
+  return [message.content, ...lines].filter(Boolean).join("\n\n");
+}
+
+function applied(action: AgentAction) {
+  if (action.status !== "done") return;
+  if (action.effect?.look) adoptPrefs(action.effect.look, action.effect.updated_at || Date.now());
+  window.dispatchEvent(new CustomEvent("nmk-assistant-action", { detail: action }));
+}
+
+function upsertAction(message: ChatMessage, action: AgentAction): ChatMessage {
+  const list = message.actions || [];
+  const at = list.findIndex((a) => a.id === action.id);
+  return { ...message, actions: at < 0 ? [...list, action] : list.map((a, i) => (i === at ? { ...a, ...action } : a)) };
+}
+
+function patchAction(id: string, patch: Partial<AgentAction>) {
+  const messages = state.messages.map((m) => (m.actions?.some((a) => a.id === id) ? upsertAction(m, { ...m.actions.find((a) => a.id === id)!, ...patch }) : m));
+  set({ messages }, true);
+}
+
+const deciding = new Set<string>();
+
+async function decide(action: AgentAction, verb: "confirm" | "cancel") {
+  if (action.status !== "pending" || deciding.has(action.id)) return;
+  deciding.add(action.id);
+  patchAction(action.id, { status: "running", error: undefined });
+  try {
+    const response = await fetch(`/api/assistant/actions/${encodeURIComponent(action.id)}/${verb}`, { method: "POST", credentials: "same-origin" });
+    const data = (await response.json().catch(() => ({}))) as { action?: AgentAction; error?: string };
+    if (data.action) {
+      patchAction(action.id, { ...data.action, error: data.action.error || (response.ok ? undefined : data.error) });
+      applied(data.action);
+    } else patchAction(action.id, { status: "pending", error: data.error || "暂时无法完成，请稍后再试。" });
+  } catch {
+    patchAction(action.id, { status: "pending", error: "网络连接失败，请检查网络后重试。" });
+  } finally {
+    deciding.delete(action.id);
+  }
+}
+
+export const confirmAction = (action: AgentAction) => decide(action, "confirm");
+export const cancelAction = (action: AgentAction) => decide(action, "cancel");
+
 export async function ask(question: string, page: { path: string; title: string; recent?: string }, { visible }: { visible: () => boolean }, files: Attachment[] = []) {
   const text = question.trim() || (files.length ? "请看看我附上的文件。" : "");
   if (!text || state.phase !== "idle") return;
@@ -91,9 +167,9 @@ export async function ask(question: string, page: { path: string; title: string;
   const abort = new AbortController();
   controller = abort;
   const history = state.messages
-    .filter((m) => !m.error && m.content.trim())
+    .filter((m) => !m.error && (m.content.trim() || m.actions?.length))
     .slice(-11)
-    .map((m) => ({ role: m.role, content: m.content }));
+    .map((m) => ({ role: m.role, content: m.role === "assistant" ? withRecords(m) : m.content }));
   const reply: ChatMessage = { id: uid(), role: "assistant", content: "", at: Date.now() };
   const asked: ChatMessage = { id: uid(), role: "user", content: text, at: Date.now(), ...(files.length ? { files: info(files) } : {}) };
   if (files.length) sent.set(asked.id, files);
@@ -138,8 +214,12 @@ export async function ask(question: string, page: { path: string; title: string;
         if (!event || raw === undefined) continue;
         const data = JSON.parse(raw);
         if (event === "sources") patchLast((m) => ({ ...m, sources: data as Source[] }));
-        else if (event === "delta") {
-          if ((state.phase as Phase) !== "writing") set({ phase: "writing" });
+        else if (event === "status") set({ activity: (data as { text: string }).text });
+        else if (event === "action") {
+          patchLast((m) => upsertAction(m, data as AgentAction), true);
+          applied(data as AgentAction);
+        } else if (event === "delta") {
+          if ((state.phase as Phase) !== "writing" || state.activity) set({ phase: "writing", activity: "" });
           patchLast((m) => ({ ...m, content: m.content + (data as { text: string }).text }));
         } else if (event === "error") {
           patchLast((m) => ({ ...m, error: (data as { message: string }).message }));
@@ -160,7 +240,7 @@ export async function ask(question: string, page: { path: string; title: string;
       }));
   } finally {
     if (controller === abort) controller = null;
-    set({ phase: "idle", unread: !visible() }, true);
+    set({ phase: "idle", unread: !visible(), activity: "" }, true);
   }
 }
 
