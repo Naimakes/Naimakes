@@ -359,6 +359,7 @@ function readMessages(body) {
 const CHAT_ID = /^[a-z0-9]{6,40}$/;
 const MAX_SAVED_CHATS = 100;
 const MAX_SAVED_MESSAGES = 40;
+const MAX_VERSIONS = 6;
 
 function sanitizeSources(list) {
   if (!Array.isArray(list)) return undefined;
@@ -384,6 +385,18 @@ function sanitizeSavedChat(body) {
     const sources = sanitizeSources(m.sources);
     if (sources) item.sources = sources;
     if (m.offline === true) item.offline = true;
+    if (m.branch === true) item.branch = true;
+    // 重新生成的多个版本：只留文字和参考来源；当前显示哪一个由 vi 决定。
+    if (Array.isArray(m.versions) && m.versions.length > 1) {
+      const versions = m.versions
+        .filter((v) => v && typeof v.content === "string")
+        .slice(-MAX_VERSIONS)
+        .map((v) => ({ content: v.content.slice(0, 20000), at: Number.isFinite(v.at) ? v.at : Date.now(), ...(sanitizeSources(v.sources) ? { sources: sanitizeSources(v.sources) } : {}), ...(v.offline === true ? { offline: true } : {}) }));
+      if (versions.length > 1) {
+        item.versions = versions;
+        item.vi = Number.isInteger(m.vi) ? Math.min(Math.max(m.vi, 0), versions.length - 1) : versions.length - 1;
+      }
+    }
     if (Array.isArray(m.files)) {
       const files = m.files
         .filter((f) => f && typeof f.name === "string" && ["image", "pdf", "text"].includes(f.kind))

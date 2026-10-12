@@ -3,17 +3,23 @@ import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "motion/react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { ArrowUp, ArrowUpRight, Ban, Check, ChevronRight, Clock, FileText, History, LoaderCircle, Minus, Plus, RotateCcw, Square, SquarePen, X } from "lucide-react";
+import { ArrowUp, ArrowUpRight, Ban, Check, ChevronLeft, ChevronRight, Clock, Copy, FileText, GitBranch, Globe2, History, LoaderCircle, LibraryBig, Mic, Minus, Pencil, Plus, RefreshCw, RotateCcw, Square, SquarePen, Upload, X } from "lucide-react";
 import { LiquidButton } from "../forum/motion/LiquidButton";
 import { useMotionPreferences } from "../forum/motion/motion-preferences";
 import { ThinkingSwitch } from "./ThinkingSwitch";
 import AssistantDetails from "./AssistantDetails";
 import AssistantHistory from "./AssistantHistory";
+import AssistantPicker, { type PickerTab } from "./AssistantPicker";
+import AssistantMemory from "./AssistantMemory";
+import AssistantTasks from "./AssistantTasks";
 import { openShare } from "../forum/share/share-api";
 import AssistantShared from "./AssistantShared";
 import { BotFigure, type BotLook } from "./BotFigure";
 import { accept, MAX_FILES, readAttachment, type Attachment } from "./attachments";
-import { ask, cancelAction, clearChat, confirmAction, markRead, retryLast, stopReply, switchOwner, useChat, type AgentAction, type ChatMessage } from "./chat";
+import { answerCount, ask, branchFrom, openChat, cancelAction, clearChat, confirmAction, editMessage, markRead, regenerate, retryLast, stopReply, switchOwner, switchVersion, useChat, type AgentAction, type ChatMessage } from "./chat";
+import { useVoiceInput, voiceSupported } from "./voice";
+import ContextMenu, { useContextMenu } from "../forum/ui/ContextMenu";
+import { longPressMenu, type MenuPoint } from "../forum/ui/GlassSegments";
 import { isPostRequest, pickMood, taskDifficulty } from "./mood";
 import { go, recentlyViewed } from "./nav";
 import { connectAccount, readPosition, savePosition, useNotify, usePrefs } from "./prefs";
@@ -137,10 +143,70 @@ function ActionCard({ action, onLink }: { action: AgentAction; onLink: (href: st
   );
 }
 
-function Message({ message, onLink, onRetry, last }: { message: ChatMessage; onLink: (href: string) => void; onRetry: () => void; last: boolean }) {
-  if (message.role === "user")
+export type MessageTools = {
+  idle: boolean;
+  lastBotId: string;
+  editing: { id: string; text: string } | null;
+  copied: string;
+  onMenu: (event: MenuPoint, message: ChatMessage) => void;
+  onCopy: (message: ChatMessage) => void;
+  onRegenerate: () => void;
+  onBranch: (message: ChatMessage) => void;
+  onSwitch: (id: string, to: number) => void;
+  onEditText: (text: string) => void;
+  onEditSave: () => void;
+  onEditCancel: () => void;
+  branching: boolean;
+};
+
+function EditBox({ tools }: { tools: MessageTools }) {
+  const field = useRef<HTMLTextAreaElement>(null);
+  useLayoutEffect(() => {
+    const el = field.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = Math.min(el.scrollHeight, 200) + "px";
+  }, [tools.editing?.text]);
+  useEffect(() => {
+    const el = field.current;
+    el?.focus({ preventScroll: true });
+    el?.setSelectionRange(el.value.length, el.value.length);
+  }, []);
+  const empty = !tools.editing?.text.trim();
+  return (
+    <div className="assistant-edit">
+      <textarea
+        ref={field}
+        value={tools.editing?.text ?? ""}
+        maxLength={2000}
+        aria-label="修改这条消息"
+        onChange={(event) => tools.onEditText(event.target.value)}
+        onKeyDown={(event) => {
+          if (event.key === "Escape") tools.onEditCancel();
+          else if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
+            event.preventDefault();
+            if (!empty) tools.onEditSave();
+          }
+        }}
+      />
+      <div className="assistant-edit-buttons">
+        <LiquidButton type="button" className="assistant-chip is-compact" onClick={tools.onEditCancel}>
+          取消
+        </LiquidButton>
+        <LiquidButton type="button" className="assistant-chip is-compact is-primary" disabled={empty} onClick={tools.onEditSave}>
+          发送
+        </LiquidButton>
+      </div>
+    </div>
+  );
+}
+
+function Message({ message, onLink, onRetry, last, tools }: { message: ChatMessage; onLink: (href: string) => void; onRetry: () => void; last: boolean; tools?: MessageTools }) {
+  const menu = tools ? longPressMenu((event) => tools.onMenu(event, message)) : {};
+  if (message.role === "user") {
+    const editing = tools?.editing?.id === message.id;
     return (
-      <div className="assistant-msg is-user">
+      <div className={"assistant-msg is-user" + (editing ? " is-editing" : "")} {...(editing ? {} : menu)}>
         {message.files && message.files.length > 0 && (
           <div className="assistant-files">
             {message.files.map((file, index) =>
@@ -155,15 +221,18 @@ function Message({ message, onLink, onRetry, last }: { message: ChatMessage; onL
             )}
           </div>
         )}
-        <p>{message.content}</p>
+        {editing && tools ? <EditBox tools={tools} /> : <p>{message.content}</p>}
       </div>
     );
+  }
   const sources = (message.sources || []).slice(0, 4);
   const actions = message.actions || [];
   const empty = !message.content && !message.error && !actions.length;
   if (empty) return null;
+  const count = answerCount(message);
+  const current = message.vi ?? count - 1;
   return (
-    <div className="assistant-msg is-bot">
+    <div className={"assistant-msg is-bot" + (message.branch ? " is-branch" : "")} {...menu}>
       {message.content && (
         <div className="assistant-markdown">
           <ReactMarkdown
@@ -215,6 +284,34 @@ function Message({ message, onLink, onRetry, last }: { message: ChatMessage; onL
               <ArrowUpRight size={14} />
             </LiquidButton>
           ))}
+        </div>
+      )}
+      {tools && tools.idle && message.content && (
+        <div className="assistant-msg-tools" role="toolbar" aria-label="回答操作">
+          {count > 1 && (
+            <span className="assistant-versions" role="group" aria-label="回答版本">
+              <button type="button" aria-label="上一个回答" disabled={current <= 0} onClick={() => tools.onSwitch(message.id, current - 1)}>
+                <ChevronLeft size={14} />
+              </button>
+              <em aria-live="polite">
+                {current + 1} / {count}
+              </em>
+              <button type="button" aria-label="下一个回答" disabled={current >= count - 1} onClick={() => tools.onSwitch(message.id, current + 1)}>
+                <ChevronRight size={14} />
+              </button>
+            </span>
+          )}
+          <button type="button" aria-label="复制回答" title="复制" onClick={() => tools.onCopy(message)}>
+            {tools.copied === message.id ? <Check size={14} /> : <Copy size={14} />}
+          </button>
+          {message.id === tools.lastBotId && (
+            <button type="button" aria-label="重新生成" title="重新生成" onClick={tools.onRegenerate}>
+              <RefreshCw size={14} />
+            </button>
+          )}
+          <button type="button" aria-label="从这里开新分支" title="新分支：整理之前的对话，带到一段新对话里" disabled={tools.branching} onClick={() => tools.onBranch(message)}>
+            {tools.branching ? <LoaderCircle size={14} className="spin" /> : <GitBranch size={14} />}
+          </button>
         </div>
       )}
     </div>
@@ -287,7 +384,9 @@ export default function AssistantDock({ userId, shared = null }: { userId: strin
   const { reduced } = useMotionPreferences();
   const notify = useNotify();
   const [open, setOpen] = useState(false);
-  const [view, setView] = useState<"chat" | "details" | "history" | "shared">("chat");
+  const [view, setView] = useState<"chat" | "details" | "history" | "shared" | "picker" | "memory" | "tasks">("chat");
+  const [pickerTab, setPickerTab] = useState<PickerTab>("library");
+  const attachMenu = useContextMenu<null>();
   const [settled, setSettled] = useState<"success" | "error" | null>(null);
   const [box, setBox] = useState<Box | null>(null);
   const [mood, setMood] = useState("idle");
@@ -298,6 +397,11 @@ export default function AssistantDock({ userId, shared = null }: { userId: strin
   const [files, setFiles] = useState<Attachment[]>([]);
   const [fileError, setFileError] = useState("");
   const [dropping, setDropping] = useState(false);
+  const [editing, setEditing] = useState<{ id: string; text: string } | null>(null);
+  const [copied, setCopied] = useState("");
+  const [toast, setToast] = useState("");
+  const toastTimer = useRef(0);
+  const messageMenu = useContextMenu<ChatMessage>();
   const picker = useRef<HTMLInputElement>(null);
   const errorTimer = useRef(0);
   const [aiReady, setAiReady] = useState<boolean | null>(null);
@@ -711,6 +815,42 @@ export default function AssistantDock({ userId, shared = null }: { userId: strin
     setFileError(message);
     errorTimer.current = window.setTimeout(() => setFileError(""), 5000);
   };
+  const say = (message: string) => {
+    clearTimeout(toastTimer.current);
+    setToast(message);
+    toastTimer.current = window.setTimeout(() => setToast(""), 1800);
+  };
+  const copyMessage = async (message: ChatMessage) => {
+    let ok = false;
+    try {
+      await navigator.clipboard.writeText(message.content);
+      ok = true;
+    } catch {
+      const area = document.createElement("textarea");
+      area.value = message.content;
+      area.style.position = "fixed";
+      area.style.opacity = "0";
+      document.body.appendChild(area);
+      area.select();
+      try {
+        ok = document.execCommand("copy");
+      } catch {}
+      area.remove();
+    }
+    if (!ok) return say("复制失败，请手动选择文字复制。");
+    say("已复制");
+    setCopied(message.id);
+    window.setTimeout(() => setCopied((id) => (id === message.id ? "" : id)), 1500);
+  };
+  const voice = useVoiceInput({
+    onText: (text) => setDraft(text.slice(0, 2000)),
+    onError: complain,
+  });
+  const toggleVoice = () => {
+    if (voice.listening) return voice.stop();
+    if (chat.phase !== "idle") return;
+    voice.start(draft);
+  };
   const addFiles = async (incoming: File[]) => {
     const room = MAX_FILES - files.length;
     if (!incoming.length) return;
@@ -728,6 +868,7 @@ export default function AssistantDock({ userId, shared = null }: { userId: strin
   };
   const send = (text = draft) => {
     if ((!text.trim() && !files.length) || chat.phase !== "idle") return;
+    voice.stop();
     const attached = files;
     setDraft("");
     setFiles([]);
@@ -769,8 +910,9 @@ export default function AssistantDock({ userId, shared = null }: { userId: strin
                   ? "sleeping"
                   : "idle";
   const headState = agentState === "idle" && draft.trim() ? "listening" : agentState;
-  const status =
-    chat.phase !== "idle" && chat.activity
+  const status = chat.branching
+    ? "正在整理原对话…"
+    : chat.phase !== "idle" && chat.activity
       ? chat.activity
       : chat.phase === "searching"
         ? hasFiles
@@ -788,6 +930,48 @@ export default function AssistantDock({ userId, shared = null }: { userId: strin
     ? ({ left: box.left, top: box.top, width: box.width, height: box.height, transformOrigin: box.origin } as CSSProperties)
     : undefined;
   const lastIndex = chat.messages.length - 1;
+  const lastBotId = [...chat.messages].reverse().find((m) => m.role === "assistant" && m.content)?.id ?? "";
+  const lastMessageIsBot = chat.messages[lastIndex]?.role === "assistant";
+  const tools: MessageTools = {
+    idle: chat.phase === "idle",
+    lastBotId: lastMessageIsBot ? lastBotId : "",
+    editing,
+    copied,
+    onMenu: (event, message) => messageMenu.open(event, message),
+    onCopy: copyMessage,
+    onRegenerate: () => regenerate(page(), { visible }),
+    onBranch: async (message) => {
+      if (await branchFrom(message.id)) {
+        setDraft("");
+        setFiles([]);
+        say("已创建新分支");
+        requestAnimationFrame(() => input.current?.focus({ preventScroll: true }));
+      }
+    },
+    onSwitch: switchVersion,
+    onEditText: (text) => setEditing((current) => (current ? { ...current, text } : current)),
+    onEditSave: () => {
+      if (!editing?.text.trim()) return;
+      const { id, text } = editing;
+      setEditing(null);
+      editMessage(id, text, page(), { visible });
+    },
+    onEditCancel: () => setEditing(null),
+    branching: chat.branching,
+  };
+  const messageItems = (message: ChatMessage) => {
+    const idle = chat.phase === "idle";
+    if (message.role === "user")
+      return [
+        { label: "复制", icon: <Copy size={14} />, onSelect: () => void copyMessage(message) },
+        { label: "修改", icon: <Pencil size={14} />, disabled: !idle, title: idle ? undefined : "回答结束后才能修改", onSelect: () => setEditing({ id: message.id, text: message.content }) },
+      ];
+    return [
+      { label: "复制", icon: <Copy size={14} />, onSelect: () => void copyMessage(message) },
+      ...(message.id === tools.lastBotId ? [{ label: "重新生成", icon: <RefreshCw size={14} />, disabled: !idle, onSelect: () => tools.onRegenerate() }] : []),
+      { label: "新分支", icon: <GitBranch size={14} />, disabled: !idle || chat.branching, onSelect: () => void tools.onBranch(message) },
+    ];
+  };
   const shift = reduced ? 0 : 28;
   const newChat = () => {
     clearChat();
@@ -912,7 +1096,7 @@ export default function AssistantDock({ userId, shared = null }: { userId: strin
                   </div>
                 ) : (
                   chat.messages.map((message, index) => (
-                    <Message key={message.id} message={message} last={index === lastIndex} onLink={follow} onRetry={() => retryLast(page(), { visible })} />
+                    <Message key={message.id} message={message} last={index === lastIndex} onLink={follow} onRetry={() => retryLast(page(), { visible })} tools={tools} />
                   ))
                 )}
                 {chat.phase !== "idle" && <WorkingRow look={look} state={agentState} status={status} />}
@@ -969,10 +1153,11 @@ export default function AssistantDock({ userId, shared = null }: { userId: strin
                   <LiquidButton
                     type="button"
                     className="icon-button assistant-add"
-                    aria-label="添加附件（图片、PDF 或文本文件）"
+                    aria-label="添加附件（上传新文件、从图书馆选择，或搜索站内文章）"
                     title="添加附件"
+                    aria-haspopup="menu"
                     disabled={chat.phase !== "idle" || files.length >= MAX_FILES}
-                    onClick={() => picker.current?.click()}
+                    onClick={(event) => attachMenu.open(event, null)}
                   >
                     <Plus size={18} />
                   </LiquidButton>
@@ -981,7 +1166,7 @@ export default function AssistantDock({ userId, shared = null }: { userId: strin
                     value={draft}
                     rows={1}
                     maxLength={2000}
-                    placeholder={files.length ? "说说想让我看什么…" : "问问本站的内容或功能…"}
+                    placeholder={voice.listening ? "正在听，请说话…" : files.length ? "说说想让我看什么…" : "问问本站的内容或功能…"}
                     aria-label="输入问题"
                     enterKeyHint="send"
                     onChange={(event) => {
@@ -1003,6 +1188,17 @@ export default function AssistantDock({ userId, shared = null }: { userId: strin
                       }
                     }}
                   />
+                  <LiquidButton
+                    type="button"
+                    className={"icon-button assistant-mic" + (voice.listening ? " is-listening" : "")}
+                    aria-label={voice.listening ? "停止语音输入" : "语音输入"}
+                    aria-pressed={voice.listening}
+                    title={voiceSupported() ? (voice.listening ? "点一下结束语音输入" : "语音输入") : "当前浏览器不支持语音输入"}
+                    disabled={chat.phase !== "idle"}
+                    onClick={toggleVoice}
+                  >
+                    {voice.listening ? <Square size={12} fill="currentColor" /> : <Mic size={17} />}
+                  </LiquidButton>
                   {chat.phase === "idle" ? (
                     <LiquidButton type="submit" className="icon-button assistant-send" aria-label="发送" disabled={!draft.trim() && !files.length}>
                       <ArrowUp size={17} />
@@ -1014,6 +1210,37 @@ export default function AssistantDock({ userId, shared = null }: { userId: strin
                   )}
                 </div>
               </form>
+              {toast && (
+                <div className="assistant-toast" role="status">
+                  {toast}
+                </div>
+              )}
+              {attachMenu.menu && (
+                <ContextMenu
+                  x={attachMenu.menu.x}
+                  y={attachMenu.menu.y}
+                  open={attachMenu.isOpen}
+                  onClose={attachMenu.close}
+                  onExited={attachMenu.finish}
+                  triggerRef={attachMenu.triggerRef}
+                  items={[
+                    { label: "上传新文件", icon: <Upload size={14} />, onSelect: () => picker.current?.click() },
+                    ...(userId ? [{ label: "从图书馆选择", icon: <LibraryBig size={14} />, onSelect: () => { setPickerTab("library"); setView("picker"); } }] : []),
+                    { label: "搜索站内文章和资源", icon: <Globe2 size={14} />, onSelect: () => { setPickerTab("site"); setView("picker"); } },
+                  ]}
+                />
+              )}
+              {messageMenu.menu && (
+                <ContextMenu
+                  x={messageMenu.menu.x}
+                  y={messageMenu.menu.y}
+                  open={messageMenu.isOpen}
+                  onClose={messageMenu.close}
+                  onExited={messageMenu.finish}
+                  triggerRef={messageMenu.triggerRef}
+                  items={messageItems(messageMenu.menu.item)}
+                />
+              )}
             </motion.div>
 
             <AnimatePresence>
@@ -1034,6 +1261,8 @@ export default function AssistantDock({ userId, shared = null }: { userId: strin
                     onClose={() => { stopReply(); closePanel(); markRead(); }}
                     onNewChat={newChat}
                     onSettings={() => follow("/settings#assistant")}
+                    onMemory={() => setView("memory")}
+                    onTasks={() => setView("tasks")}
                   />
                 </motion.div>
               )}
@@ -1056,6 +1285,64 @@ export default function AssistantDock({ userId, shared = null }: { userId: strin
                     onOpened={() => {
                       setView("chat");
                       requestAnimationFrame(() => input.current?.focus({ preventScroll: true }));
+                    }}
+                  />
+                </motion.div>
+              )}
+              {view === "picker" && (
+                <motion.div
+                  key="picker"
+                  className="assistant-layer"
+                  initial={{ opacity: 0, x: shift }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: shift }}
+                  transition={reduced ? { duration: 0.01 } : { type: "spring", stiffness: 380, damping: 36 }}
+                >
+                  <AssistantPicker
+                    signedIn={!!userId}
+                    initialTab={pickerTab}
+                    room={Math.max(0, MAX_FILES - files.length)}
+                    onBack={() => setView("chat")}
+                    onClose={() => { stopReply(); closePanel(); markRead(); }}
+                    onUpload={() => { picker.current?.click(); setView("chat"); }}
+                    onPick={(picked) => {
+                      setFiles((list) => [...list, ...picked].slice(0, MAX_FILES));
+                      setView("chat");
+                      requestAnimationFrame(() => input.current?.focus({ preventScroll: true }));
+                    }}
+                  />
+                </motion.div>
+              )}
+              {view === "memory" && (
+                <motion.div
+                  key="memory"
+                  className="assistant-layer"
+                  initial={{ opacity: 0, x: shift }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: shift }}
+                  transition={reduced ? { duration: 0.01 } : { type: "spring", stiffness: 380, damping: 36 }}
+                >
+                  <AssistantMemory signedIn={!!userId} onBack={() => setView("details")} onClose={() => { stopReply(); closePanel(); markRead(); }} />
+                </motion.div>
+              )}
+              {view === "tasks" && (
+                <motion.div
+                  key="tasks"
+                  className="assistant-layer"
+                  initial={{ opacity: 0, x: shift }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: shift }}
+                  transition={reduced ? { duration: 0.01 } : { type: "spring", stiffness: 380, damping: 36 }}
+                >
+                  <AssistantTasks
+                    signedIn={!!userId}
+                    onBack={() => setView("details")}
+                    onClose={() => { stopReply(); closePanel(); markRead(); }}
+                    onOpenChat={async (id) => {
+                      if (await openChat(id)) {
+                        setView("chat");
+                        requestAnimationFrame(() => input.current?.focus({ preventScroll: true }));
+                      }
                     }}
                   />
                 </motion.div>

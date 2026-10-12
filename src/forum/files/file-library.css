@@ -268,3 +268,13 @@
     width: auto;
   }
 }
+
+.file-library > .file-search { width: 100%; max-width: 560px; }
+.file-range { min-width: 140px; }
+.file-range-dates { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; color: var(--muted); font-size: 0.8125rem; }
+.file-via { color: var(--secondary) !important; }
+@media (max-width: 760px) {
+  .file-library > .file-search { max-width: none; }
+  .library-toolbar.file-toolbar { flex-wrap: wrap; }
+  .library-toolbar.file-toolbar .file-range { flex: 1 1 140px; }
+}

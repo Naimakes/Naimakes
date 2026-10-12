@@ -12,11 +12,9 @@ import {
   MoreHorizontal,
   Pin,
   PinOff,
-  Search,
   Star,
   Trash2,
   Upload,
-  X,
 } from "lucide-react";
 import { api, uploadFile, type User } from "../api";
 import { LiquidButton } from "../motion/LiquidButton";
@@ -25,6 +23,10 @@ import { GlassSegments, longPressMenu } from "../ui/GlassSegments";
 import ContextMenu, { useContextMenu } from "../ui/ContextMenu";
 import Confirm from "../ui/Confirm";
 import { UploadProgress, useUploadSession } from "../ui/UploadProgress";
+import { GlassSelect } from "../ui/GlassSelect";
+import GlassDateTime from "../ui/GlassDateTime";
+import FileSearch from "./FileSearch";
+import { inTimeRange, timeRanges, useFileMatches, type TimeRange } from "./file-filters";
 import { AttachmentViewer, fileKind, fileSize, icons, labels, type Kind } from "../posts/Attachments";
 import "./file-library.css";
 
@@ -48,6 +50,11 @@ type Tab = "all" | "favorite" | "image" | "pdf" | "doc" | "sheet" | "media" | "o
 
 const TRASH_DAYS = 30;
 const DAY = 86400000;
+const todayKey = () => {
+  const now = new Date();
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+};
 
 const tabs: { id: Tab; label: string }[] = [
   { id: "all", label: "全部" },
@@ -140,6 +147,9 @@ export default function FileLibrary({
   const [view, setView] = useState<View>("main");
   const [tab, setTab] = useState<Tab>("all");
   const [search, setSearch] = useState("");
+  const [range, setRange] = useState<TimeRange>("all");
+  const [from, setFrom] = useState("");
+  const [to, setTo] = useState("");
   const [selecting, setSelecting] = useState(false);
   const [picked, setPicked] = useState<string[]>([]);
   const [viewing, setViewing] = useState<LibraryFile | null>(null);
@@ -152,6 +162,7 @@ export default function FileLibrary({
   const session = useUploadSession();
   const itemMenu = useContextMenu<LibraryFile>();
   const userId = user?.id;
+  const { matches, searching } = useFileMatches(search, !!user);
 
   const load = useCallback(async () => {
     try {
@@ -174,6 +185,7 @@ export default function FileLibrary({
   const shown = useMemo(() => {
     const query = search.trim().toLowerCase();
     return (files ?? [])
+      .filter((f) => inTimeRange(f.created_at, range, from, to))
       .filter((f) => {
         if (view === "deleted") return f.deleted_at !== null;
         if (f.deleted_at !== null) return false;
@@ -182,9 +194,9 @@ export default function FileLibrary({
         if (tab === "favorite") return f.favorite;
         return tab === "all" || groupOf[fileKind(f)] === tab;
       })
-      .filter((f) => !query || f.name.toLowerCase().includes(query))
+      .filter((f) => !query || (matches ? matches.has(f.id) : f.name.toLowerCase().includes(query)))
       .sort(view === "deleted" ? (a, b) => (b.deleted_at ?? 0) - (a.deleted_at ?? 0) : byOrder);
-  }, [files, view, tab, search]);
+  }, [files, view, tab, search, matches, range, from, to]);
   const counts = useMemo(
     () => ({
       hidden: live.filter((f) => f.hidden).length,
@@ -381,8 +393,8 @@ export default function FileLibrary({
       : view === "hidden"
         ? "隐藏的文件不会出现在「全部」和各分类里，只在这里显示。"
         : "";
-  const empty = search.trim()
-    ? "没有找到匹配的文件。"
+  const empty = search.trim() || range !== "all"
+    ? "没有找到符合条件的文件。"
     : view === "deleted"
       ? "「已删除」是空的。"
       : view === "hidden"
@@ -416,6 +428,7 @@ export default function FileLibrary({
             <small>
               {trashed ? `${daysLeft(file)} 天后彻底删除` : `${dateText(file.created_at)} · ${sourceLabels[file.source] || "上传"}`}
             </small>
+            {matches?.get(file.id) && <small className="file-via" title={matches.get(file.id)!.title}>来自对话「{matches.get(file.id)!.title}」</small>}
           </span>
         </button>
         {selecting && (
@@ -496,18 +509,36 @@ export default function FileLibrary({
       )}
       {note && <p className="file-note">{note}</p>}
 
+      <FileSearch
+        value={search}
+        onChange={setSearch}
+        busy={searching}
+        shortcut
+        label="搜索图书馆"
+        placeholder="搜索文件名，或聊天记录里提到过的文件"
+      />
       <div className="library-toolbar file-toolbar">
-        <div className="library-search">
-          <Search size={17} />
-          <input aria-label="搜索文件" placeholder="搜索文件名" value={search} onChange={(e) => setSearch(e.target.value)} />
-          {search && (
-            <LiquidButton className="icon-button" aria-label="清除搜索" onClick={() => setSearch("")}>
-              <X size={14} />
-            </LiquidButton>
-          )}
+        <div className="file-range">
+          <label className="sr-only" htmlFor="file-range">
+            上传时间
+          </label>
+          <GlassSelect id="file-range" value={range} onChange={(e) => setRange(e.target.value as TimeRange)}>
+            {timeRanges.map((r) => (
+              <option key={r.id} value={r.id}>
+                {r.label}
+              </option>
+            ))}
+          </GlassSelect>
         </div>
+        {range === "custom" && (
+          <div className="file-range-dates">
+            <GlassDateTime label="开始日期" granularity="date" value={from} max={to || todayKey()} onChange={setFrom} />
+            <span aria-hidden="true">至</span>
+            <GlassDateTime label="结束日期" granularity="date" value={to} min={from || undefined} max={todayKey()} onChange={setTo} />
+          </div>
+        )}
         <span className="file-summary">
-          {view === "main"
+          {view === "main" && !search.trim() && range === "all"
             ? `${counts.total} 个文件 · ${fileSize(counts.size)}`
             : `${shown.length} 个文件`}
         </span>

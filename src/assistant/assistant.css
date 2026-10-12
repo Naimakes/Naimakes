@@ -876,3 +876,116 @@ body:has(.landing-layer) .assistant-host { display: none !important; }
 }
 .assistant-thinking.is-compact .assistant-thinking-option { min-height: 26px; padding: 0 10px; font-size: 12px; }
 .assistant-thinking-label { padding: 0 8px 0 4px; color: var(--muted, #6f6f6f); font-size: 12px; }
+
+/* 消息操作：复制、重新生成、新分支、回答版本切换 */
+.assistant-msg-tools {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 2px;
+  margin: -4px 0 0 4px;
+  color: var(--assistant-soft);
+}
+.assistant-msg-tools button {
+  display: inline-grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  transition: background .15s ease, color .15s ease, opacity .15s ease;
+}
+.assistant-msg-tools button:disabled { opacity: .35; cursor: default; }
+@media (hover: hover) and (pointer: fine) {
+  .assistant-msg-tools button:not(:disabled):hover { background: rgb(0 0 0 / .07); color: var(--assistant-ink); }
+}
+.assistant-versions {
+  display: inline-flex;
+  align-items: center;
+  margin-right: 4px;
+  border-radius: 999px;
+  background: rgb(0 0 0 / .04);
+}
+.assistant-versions button { width: 26px; height: 26px; }
+.assistant-versions em {
+  min-width: 34px;
+  font-size: 12px;
+  font-style: normal;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  color: var(--assistant-ink);
+}
+.assistant-msg.is-bot.is-branch .assistant-markdown { border-style: dashed; }
+
+/* 修改自己发出的消息 */
+.assistant-msg.is-user.is-editing { align-items: stretch; }
+.assistant-edit {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid var(--assistant-line);
+  border-radius: 18px;
+  background: var(--glass-bg, rgb(255 255 255 / .6));
+}
+.assistant-edit textarea {
+  width: 100%;
+  min-height: 44px;
+  max-height: 200px;
+  resize: none;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--assistant-ink);
+  font: inherit;
+  font-size: 14px;
+  line-height: 1.6;
+}
+.assistant-edit-buttons { display: flex; justify-content: flex-end; gap: 8px; }
+
+/* 复制、新分支等的轻提示 */
+.assistant-toast {
+  position: absolute;
+  left: 50%;
+  bottom: 96px;
+  z-index: 5;
+  transform: translateX(-50%);
+  padding: 7px 14px;
+  border-radius: 999px;
+  background: var(--glass-selection-bg, #000);
+  color: var(--glass-selection-text, #fff);
+  box-shadow: var(--glass-selection-shadow);
+  font-size: 12.5px;
+  pointer-events: none;
+  animation: assistant-msg-in .24s var(--assistant-ease) both;
+}
+
+/* 语音输入 */
+.assistant-panel .assistant-mic.icon-button.icon-button {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  padding: 0;
+  border-radius: 50%;
+  color: var(--assistant-ink);
+}
+.assistant-panel .assistant-mic:disabled { opacity: .38; }
+.assistant-panel .assistant-mic.is-listening.icon-button.icon-button {
+  background: #d92d20;
+  color: #fff;
+  animation: assistant-listening 1.4s ease-in-out infinite;
+}
+@keyframes assistant-listening {
+  0%, 100% { box-shadow: 0 0 0 0 rgb(217 45 32 / .45); }
+  50% { box-shadow: 0 0 0 9px rgb(217 45 32 / 0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .assistant-panel .assistant-mic.is-listening { animation: none; }
+}

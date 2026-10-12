@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from "react";
 import { adoptPrefs, getPrefs, type AssistantPrefs } from "./prefs";
-import { info, type Attachment, type FileInfo } from "./attachments";
+import { info, wire, type Attachment, type FileInfo } from "./attachments";
 
 export type Source = { type: string; id: string; title: string; url: string; board: string; excerpt: string };
 export type ActionStatus = "pending" | "running" | "done" | "failed" | "cancelled" | "expired";
@@ -15,6 +15,8 @@ export type AgentAction = {
   preview?: { heading: string; fields: { label: string; value: string }[]; body: string };
   effect?: { look?: Partial<AssistantPrefs>; updated_at?: number };
 };
+// 重新生成会留下回答的多个版本；顶层的 content 等字段始终是当前显示的那一个，versions[vi] 在切换和结束时同步。
+export type AnswerVersion = { content: string; sources?: Source[]; actions?: AgentAction[]; error?: string; offline?: boolean; at: number };
 export type ChatMessage = {
   id: string;
   role: "user" | "assistant";
@@ -24,6 +26,9 @@ export type ChatMessage = {
   error?: string;
   offline?: boolean;
   files?: FileInfo[];
+  versions?: AnswerVersion[];
+  vi?: number;
+  branch?: boolean;
   at: number;
 };
 export type Phase = "idle" | "searching" | "writing";
@@ -39,6 +44,7 @@ type ChatState = {
   history: HistoryItem[] | null;
   historyError: string;
   activity: string;
+  branching: boolean;
 };
 
 const LIMIT = 40;
@@ -79,7 +85,7 @@ function loadId(id: string): string {
 }
 
 function fresh(id: string): ChatState {
-  return { messages: load(id), phase: "idle", unread: false, title: loadTitle(id), id: loadId(id), signedIn: id !== "guest", history: null, historyError: "", activity: "" };
+  return { messages: load(id), phase: "idle", unread: false, title: loadTitle(id), id: loadId(id), signedIn: id !== "guest", history: null, historyError: "", activity: "", branching: false };
 }
 
 function loadTitle(id: string): string {
@@ -134,7 +140,11 @@ function push(forOwner: string) {
     const messages = state.messages
       .filter((m) => m.content.trim())
       .slice(-LIMIT)
-      .map(({ error: _error, files, ...m }) => ({ ...m, ...(files?.length ? { files: files.map(({ name, kind }) => ({ name, kind })) } : {}) }));
+      .map(({ error: _error, files, versions, ...m }) => ({
+        ...m,
+        ...(files?.length ? { files: files.map(({ name, kind, id }) => ({ name, kind, ...(id ? { id } : {}) })) } : {}),
+        ...(versions && versions.length > 1 ? { versions: versions.map(({ content, sources, offline, at }) => ({ content, sources, offline, at })) } : {}),
+      }));
     if (!messages.length) return;
     try {
       const response = await fetch("/api/assistant/chats/" + id, {
@@ -356,26 +366,70 @@ async function decide(action: AgentAction, verb: "confirm" | "cancel") {
 export const confirmAction = (action: AgentAction) => decide(action, "confirm");
 export const cancelAction = (action: AgentAction) => decide(action, "cancel");
 
-export async function ask(question: string, page: { path: string; title: string; recent?: string }, { visible }: { visible: () => boolean }, files: Attachment[] = []) {
-  const text = question.trim() || (files.length ? "请看看我附上的文件。" : "");
-  if (!text || state.phase !== "idle") return;
-  controller?.abort();
-  const abort = new AbortController();
-  controller = abort;
-  const history = state.messages
-    .filter((m) => !m.error && (m.content.trim() || m.actions?.length))
-    .slice(-11)
-    .map((m) => ({ role: m.role, content: m.role === "assistant" ? withRecords(m) : m.content }));
-  const reply: ChatMessage = { id: uid(), role: "assistant", content: "", at: Date.now() };
-  const asked: ChatMessage = { id: uid(), role: "user", content: text, at: Date.now(), ...(files.length ? { files: info(files) } : {}) };
-  if (files.length) sent.set(asked.id, files);
-  set(
-    {
-      messages: [...state.messages, asked, reply].slice(-LIMIT),
-      phase: "searching",
-    },
-    true,
-  );
+const MAX_VERSIONS = 6;
+const snapshot = (m: ChatMessage): AnswerVersion => ({ content: m.content, sources: m.sources, actions: m.actions, error: m.error, offline: m.offline, at: m.at });
+const show = (m: ChatMessage, v: AnswerVersion): ChatMessage => ({ ...m, content: v.content, sources: v.sources, actions: v.actions, error: v.error, offline: v.offline, at: v.at });
+// Writes what is on screen back into its slot in `versions`.
+const synced = (m: ChatMessage): ChatMessage =>
+  m.versions && m.versions.length > 1 ? { ...m, versions: m.versions.map((v, i) => (i === (m.vi ?? 0) ? snapshot(m) : v)) } : m;
+
+export const answerCount = (m: ChatMessage) => (m.versions && m.versions.length > 1 ? m.versions.length : 1);
+
+export function switchVersion(id: string, to: number) {
+  if (state.phase !== "idle") return;
+  const messages = state.messages.map((m) => {
+    if (m.id !== id || !m.versions || to < 0 || to >= m.versions.length) return m;
+    const base = synced(m);
+    return { ...show(base, base.versions![to]), vi: to };
+  });
+  set({ messages }, true);
+  push(owner);
+}
+
+// Reduces a failed or stopped regeneration back to the answer it was replacing.
+function settleVersions() {
+  patchLast((m) => {
+    if (!m.versions || m.versions.length < 2) return m;
+    if (m.content.trim() || m.actions?.length) return synced(m);
+    const all = m.versions;
+    const rest = all.filter((_, i) => i !== (m.vi ?? all.length - 1));
+    const back = show(m, rest[rest.length - 1]);
+    return rest.length > 1 ? { ...back, versions: rest, vi: rest.length - 1 } : { ...back, versions: undefined, vi: undefined };
+  }, true);
+}
+
+type Page = { path: string; title: string; recent?: string };
+type Options = { visible: () => boolean };
+type Turn = { text: string; files: Attachment[]; history: { role: "user" | "assistant"; content: string }[]; userId: string };
+
+const asHistory = (list: ChatMessage[]) => {
+  const usable = list.filter((m) => !m.error && (m.content.trim() || m.actions?.length));
+  const recent = usable.slice(-11);
+  // The summary a branch starts from always stays in view, however long the new chat gets.
+  const head = usable.find((m) => m.branch);
+  const kept = head && !recent.includes(head) ? [head, ...recent] : recent;
+  return kept.map((m) => ({
+    role: (m.branch ? "user" : m.role) as "user" | "assistant",
+    content: m.branch ? "[此前对话的整理，请基于它继续]\n" + m.content : m.role === "assistant" ? withRecords(m) : m.content,
+  }));
+};
+
+// Files of an earlier question, rebuilt for sending again: what is still in memory, or a reference to the library / site.
+function filesOf(message: ChatMessage): { files: Attachment[]; missing: number } {
+  const kept = sent.get(message.id);
+  if (kept) return { files: kept, missing: 0 };
+  const files: Attachment[] = [];
+  let missing = 0;
+  for (const f of message.files || []) {
+    const ref = f.id ? { library_id: f.id } : f.post ? f.post : null;
+    if (ref) files.push({ id: uid(), name: f.name, kind: f.kind, mime: "", data: "", preview: f.preview, ref });
+    else missing++;
+  }
+  return { files, missing };
+}
+
+async function converse(turn: Turn, page: Page, { visible }: Options, abort: AbortController) {
+  const { text, files, history, userId } = turn;
   try {
     const response = await fetch("/api/assistant/chat", {
       method: "POST",
@@ -385,7 +439,8 @@ export async function ask(question: string, page: { path: string; title: string;
         messages: [...history, { role: "user", content: text }],
         page,
         thinking: getPrefs().thinking,
-        ...(files.length ? { attachments: files.map(({ name, kind, mime, data }) => ({ name, kind, mime, data })) } : {}),
+        tz: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        ...(files.length ? { attachments: files.map(wire) } : {}),
       }),
       signal: abort.signal,
     });
@@ -410,7 +465,11 @@ export async function ask(question: string, page: { path: string; title: string;
         if (!event || raw === undefined) continue;
         const data = JSON.parse(raw);
         if (event === "sources") patchLast((m) => ({ ...m, sources: data as Source[] }));
-        else if (event === "status") set({ activity: (data as { text: string }).text });
+        else if (event === "files") {
+          // The server has filed the upload in the library; remember which entry it is so it can be sent by reference later.
+          const ids = data as { id: string | null }[];
+          set({ messages: state.messages.map((m) => (m.id === userId ? { ...m, files: (m.files || []).map((f, i) => (ids[i]?.id ? { ...f, id: ids[i].id! } : f)) } : m)) }, true);
+        } else if (event === "status") set({ activity: (data as { text: string }).text });
         else if (event === "action") {
           patchLast((m) => upsertAction(m, data as AgentAction), true);
           applied(data as AgentAction);
@@ -436,19 +495,107 @@ export async function ask(question: string, page: { path: string; title: string;
       }));
   } finally {
     if (controller === abort) controller = null;
+    settleVersions();
     set({ phase: "idle", unread: !visible(), activity: "" }, true);
     if (abort.signal.aborted) push(owner);
     else void summarize(owner);
   }
 }
 
-export function retryLast(page: { path: string; title: string; recent?: string }, options: { visible: () => boolean }) {
+function begin() {
+  controller?.abort();
+  const abort = new AbortController();
+  controller = abort;
+  return abort;
+}
+
+export async function ask(question: string, page: Page, options: Options, files: Attachment[] = [], missing = 0) {
+  const text = question.trim() || (files.length ? "请看看我附上的文件。" : "");
+  if (!text || state.phase !== "idle") return;
+  const abort = begin();
+  const history = asHistory(state.messages);
+  const reply: ChatMessage = { id: uid(), role: "assistant", content: "", at: Date.now() };
+  const asked: ChatMessage = { id: uid(), role: "user", content: text, at: Date.now(), ...(files.length ? { files: info(files) } : {}) };
+  if (files.length) sent.set(asked.id, files);
+  set({ messages: [...state.messages, asked, reply].slice(-LIMIT), phase: "searching" }, true);
+  const note = missing ? `\n（之前附上的 ${missing} 个文件已无法重新附上，请照没有它们的情况回答，必要时请用户再附一次。）` : "";
+  await converse({ text: text + note, files, history, userId: asked.id }, page, options, abort);
+}
+
+// 修改自己发出的某条消息并重新回答：这条消息之后的内容会被替换。
+export function editMessage(id: string, text: string, page: Page, options: Options) {
+  if (state.phase !== "idle") return;
+  const at = state.messages.findIndex((m) => m.id === id && m.role === "user");
+  if (at < 0) return;
+  const { files, missing } = filesOf(state.messages[at]);
+  set({ messages: state.messages.slice(0, at) }, true);
+  return ask(text, page, options, files, missing);
+}
+
+// 让模型重新回答最后一个问题，之前的回答留作一个版本。
+export async function regenerate(page: Page, options: Options) {
+  if (state.phase !== "idle") return;
+  const at = state.messages.length - 1;
+  const reply = state.messages[at];
+  if (!reply || reply.role !== "assistant") return;
+  const userAt = state.messages.map((m) => m.role).lastIndexOf("user");
+  const user = state.messages[userAt];
+  if (!user || userAt > at) return;
+  const abort = begin();
+  const failed = !!reply.error && !reply.content.trim();
+  const base = synced(reply);
+  const versions = failed ? undefined : [...(base.versions ?? [snapshot(reply)]), { content: "", at: Date.now() }].slice(-MAX_VERSIONS);
+  const fresh: ChatMessage = { id: reply.id, role: "assistant", content: "", at: Date.now(), ...(versions ? { versions, vi: versions.length - 1 } : {}) };
+  const { files, missing } = filesOf(user);
+  const history = asHistory(state.messages.slice(0, userAt));
+  set({ messages: [...state.messages.slice(0, at), fresh], phase: "searching" }, true);
+  const note = missing ? `\n（之前附上的 ${missing} 个文件已无法重新附上，请照没有它们的情况回答，必要时请用户再附一次。）` : "";
+  await converse({ text: user.content + note, files, history, userId: user.id }, page, options, abort);
+}
+
+export function retryLast(page: Page, options: Options) {
   const messages = state.messages.slice();
   const lastUser = [...messages].reverse().find((m) => m.role === "user");
   if (!lastUser) return;
   const at = messages.lastIndexOf(lastUser);
+  const { files, missing } = filesOf(lastUser);
   set({ messages: messages.slice(0, at) }, true);
-  const files = sent.get(lastUser.id) || [];
   sent.delete(lastUser.id);
-  return ask(lastUser.content, page, options, files);
+  return ask(lastUser.content, page, options, files, missing);
+}
+
+// 新分支：把到这条回答为止的对话交给模型整理压缩，作为一段新对话的开头。
+export async function branchFrom(id: string): Promise<boolean> {
+  if (state.phase !== "idle" || state.branching) return false;
+  const at = state.messages.findIndex((m) => m.id === id);
+  if (at < 0) return false;
+  const forOwner = owner;
+  const source = state.messages.slice(0, at + 1);
+  const title = state.title || source.find((m) => m.role === "user")?.content.replace(/\s+/g, " ").slice(0, 14) || "对话";
+  set({ branching: true });
+  try {
+    const response = await fetch("/api/assistant/branch", {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ messages: asHistory(source).map(({ role, content }) => ({ role, content })) }),
+    });
+    const data = (await response.json().catch(() => ({}))) as { summary?: string; error?: string };
+    if (!response.ok || !data.summary) throw new Error(data.error || "分支创建失败，请稍后再试。");
+    if (owner !== forOwner) return false;
+    sent.clear();
+    const intro: ChatMessage = {
+      id: uid(),
+      role: "assistant",
+      branch: true,
+      content: `这是从「${title}」分出的新分支。下面是原对话的整理，你可以直接接着聊：\n\n${data.summary}`,
+      at: Date.now(),
+    };
+    set({ messages: [intro], id: uid(), title: "分支：" + title.slice(0, 16), phase: "idle", unread: false, branching: false, activity: "" }, true);
+    push(forOwner);
+    return true;
+  } catch (error) {
+    set({ branching: false, historyError: (error as Error).message });
+    return false;
+  }
 }
