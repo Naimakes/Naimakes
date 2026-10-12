@@ -7,7 +7,7 @@ import { plainText } from "./rich-text.mjs";
 import { shareAssistantChat } from "./sharing.mjs";
 import { addMemory, autoEnabled, installMemory, listMemories, memoryBlock } from "./assistant-memory.mjs";
 import { ActionError, actions, cancelAction, catalog, colors, confirmAction, memberApi, memberApiWith, parseInput, propose, runAction, shapes } from "./assistant-actions.mjs";
-import { installTasks, nextRun, validZone } from "./assistant-tasks.mjs";
+import { installTasks, nextRun, syncTaskZone, validZone } from "./assistant-tasks.mjs";
 import { notify } from "./notifications.mjs";
 
 db.exec(`
@@ -1081,6 +1081,7 @@ export function installAssistant(app, { auth, liveClause, fileLibrary, sessions 
     }
 
     const tz = validZone(req.body?.tz);
+    if (req.user) syncTaskZone(req.user.id, req.body?.tz);
     const context =
       `<site_documents>\n${results.length ? results.map(describe).join("\n") : "（知识库中没有检索到相关资料）"}\n</site_documents>\n` +
       (pagePath ? `<current_page path="${pagePath.replace(/"/g, "")}">${pageTitle.replace(/[<>]/g, "")}</current_page>\n` : "") +

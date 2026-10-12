@@ -31,6 +31,7 @@ const repeats: { id: Repeat; label: string }[] = [
 const weekdays = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"];
 const when = (time: number) => new Date(time).toLocaleString("zh-CN", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit", hour12: false });
 const statusText = { ok: "已完成", failed: "没有成功", skipped: "错过了，已跳过" };
+const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 const pad = (n: number) => String(n).padStart(2, "0");
 const todayKey = () => {
   const d = new Date();
@@ -48,7 +49,7 @@ export default function AssistantTasks({ signedIn, onBack, onClose, onOpenChat }
 
   const load = useCallback(async () => {
     try {
-      const r = await api<{ tasks: Task[]; max: number }>("/assistant/tasks");
+      const r = await api<{ tasks: Task[]; max: number }>("/assistant/tasks?tz=" + encodeURIComponent(zone));
       setTasks(r.tasks);
       setMax(r.max);
       setError("");
@@ -71,7 +72,7 @@ export default function AssistantTasks({ signedIn, onBack, onClose, onOpenChat }
         repeat: form.repeat,
         time: form.time,
         allow_actions: form.allow_actions,
-        tz: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        tz: zone,
         ...(form.repeat === "once" ? { date: form.date } : {}),
         ...(form.repeat === "weekly" ? { weekday: form.weekday } : {}),
       };
@@ -194,6 +195,7 @@ export default function AssistantTasks({ signedIn, onBack, onClose, onOpenChat }
                     <input type="time" value={form.time} onChange={(e) => setForm({ ...form, time: e.target.value })} />
                   </label>
                 </div>
+                <small className="assistant-task-zone">时间按你浏览器当前的时区（{zone}）计算；换了时区，任务会跟着换，钟点不变。</small>
                 <label className="assistant-task-check">
                   <input type="checkbox" checked={form.allow_actions} onChange={(e) => setForm({ ...form, allow_actions: e.target.checked })} />
                   <span>

@@ -95,3 +95,4 @@
 }
 .assistant-task-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
 .assistant-task-actions .icon-button { margin-left: auto; width: 32px; height: 32px; min-width: 32px; }
+.assistant-task-zone { color: var(--assistant-soft); font-size: 11.5px; line-height: 1.5; }

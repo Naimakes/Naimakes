@@ -47,6 +47,16 @@ export function validZone(tz) {
   }
 }
 
+const isZone = (tz) => {
+  if (typeof tz !== "string" || !tz || tz.length > 64) return false;
+  try {
+    new Intl.DateTimeFormat("en-US", { timeZone: tz });
+    return true;
+  } catch {
+    return false;
+  }
+};
+
 const partsOf = (time, tz) => {
   const out = {};
   for (const part of new Intl.DateTimeFormat("en-US", { timeZone: tz, hourCycle: "h23", year: "numeric", month: "numeric", day: "numeric", hour: "numeric", minute: "numeric", second: "numeric" }).formatToParts(new Date(time)))
@@ -150,6 +160,19 @@ const publicTask = (row) => ({
   created_at: row.created_at,
 });
 
+/**
+ * 任务的时间始终按用户浏览器当前的时区计算：浏览器报告的时区变了，
+ * 任务保持同一个钟点，下次运行时间按新时区重算。
+ */
+export function syncTaskZone(userId, tz) {
+  if (!userId || !isZone(tz)) return;
+  const rows = db.prepare("SELECT * FROM assistant_tasks WHERE user_id=? AND tz<>?").all(userId, tz);
+  for (const row of rows) {
+    const next = row.enabled ? nextRun({ ...row, tz }) : row.next_run_at;
+    db.prepare("UPDATE assistant_tasks SET tz=?,next_run_at=? WHERE id=?").run(tz, next ?? row.next_run_at, row.id);
+  }
+}
+
 export const listTasks = (userId) =>
   db.prepare("SELECT * FROM assistant_tasks WHERE user_id=? ORDER BY created_at").all(userId).map(publicTask);
 export const getTask = (userId, id) => db.prepare("SELECT * FROM assistant_tasks WHERE user_id=? AND id=?").get(userId, id);
@@ -208,9 +231,18 @@ export function installTasks(app, { auth, runNow }) {
     }
   };
 
-  app.get("/api/assistant/tasks", auth, (req, res) => res.json({ tasks: listTasks(req.user.id), max: MAX_TASKS }));
-  app.post("/api/assistant/tasks", auth, json, guard((req, res) => res.status(201).json({ task: createTask(req.user.id, req.body ?? {}) })));
-  app.patch("/api/assistant/tasks/:id", auth, json, guard((req, res) => res.json({ task: updateTask(req.user.id, req.params.id, req.body ?? {}) })));
+  app.get("/api/assistant/tasks", auth, (req, res) => {
+    syncTaskZone(req.user.id, req.query.tz);
+    res.json({ tasks: listTasks(req.user.id), max: MAX_TASKS });
+  });
+  app.post("/api/assistant/tasks", auth, json, guard((req, res) => {
+    syncTaskZone(req.user.id, req.body?.tz);
+    res.status(201).json({ task: createTask(req.user.id, req.body ?? {}) });
+  }));
+  app.patch("/api/assistant/tasks/:id", auth, json, guard((req, res) => {
+    syncTaskZone(req.user.id, req.body?.tz);
+    res.json({ task: updateTask(req.user.id, req.params.id, { ...(req.body ?? {}), tz: undefined }) });
+  }));
   app.delete("/api/assistant/tasks/:id", auth, (req, res) => {
     if (!deleteTask(req.user.id, req.params.id)) return res.status(404).json({ error: "没有找到这个定时任务。" });
     res.json({ ok: true });
