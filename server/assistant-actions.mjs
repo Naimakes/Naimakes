@@ -907,6 +907,96 @@ const actionList = [
     },
   },
 
+  // —— 智能体 ——
+  {
+    name: "ask_choices",
+    title: "向用户提问",
+    kind: "ask",
+    login: false,
+    interactive: true,
+    description:
+      "向用户提出一个选择题，用来弄清用户的需求或偏好。界面会把问题和选项做成一张卡片，并自动附带「其他，我来说明」。选项 2–4 个，每个简短具体（不超过 20 字）。调用后本轮到此为止：不要再写任何文字（不要重复问题，也不要说「已发给你选项」之类的话），等用户点选或自己回答。一次只问一个问题。",
+    input: shape({ question: str("问题，一句话", 80, 2), options: list(str("选项", 40, 1), "备选项", 4, 2) }, ["question", "options"]),
+    async run() {
+      return { data: { shown: true } };
+    },
+  },
+  {
+    name: "list_agents",
+    title: "查看智能体",
+    kind: "read",
+    activity: "正在查看智能体…",
+    description: "列出用户创建的所有智能体（id、名字、指令）和哪一个是主智能体（常驻屏幕的那个）。内置的 Naimakes 的 id 是 naimakes。",
+    input: shape({}),
+    async run(_input, { call }) {
+      const { agents, main } = await call("GET", "/assistant/agents");
+      return { data: { main, agents: agents.map((a) => ({ id: a.id, name: a.name, instructions: a.instructions, shape: a.shape, color: a.color })) } };
+    },
+  },
+  {
+    name: "create_agent",
+    title: "新建智能体",
+    kind: "write",
+    interactive: true,
+    description:
+      "为用户新建一个智能体（一个有自己名字、外观和指令的 AI 助手）。用户明确说想要一个新的智能体 / 助手 / 分身时才使用。name 必填；instructions 只在用户已经明确说了它该做什么时才填，否则留空——新智能体会自己打开一段对话去了解用户的需求并写好指令。" +
+      `形状可选：${shapes.join(", ")}；颜色可选：${colors.join(", ")}（不指定就自动挑选）。创建成功后，界面会自动打开一段与新智能体的对话；你只需用一句话告诉用户已经创建、这就去和它聊。`,
+    input: shape(
+      {
+        name: str("智能体的名字，不超过 20 字，不能和已有的重名", 20, 1),
+        instructions: str("给它的指令（角色、做事方式），用户没说清楚就不要填", 2000),
+        shape: oneOf(shapes, "形状"),
+        color: oneOf(colors, "颜色"),
+      },
+      ["name"],
+    ),
+    async run(input, { call }) {
+      const { agent } = await call("POST", "/assistant/agents", input);
+      return { data: { agent_id: agent.id, name: agent.name }, summary: `已新建智能体「${agent.name}」`, effect: { agent: { id: agent.id, kind: "created" } } };
+    },
+  },
+  {
+    name: "update_agent",
+    title: "修改智能体",
+    kind: "write",
+    interactive: true,
+    description:
+      "修改一个智能体的名字、指令、形状或颜色，只传要改的项。agent_id 不填就是你自己。instructions 会整段替换原来的指令，所以要写成完整的、给智能体自己看的指令（角色定位、用户的目标与背景、做事方式与语气、固定安排，不超过 600 字），并保留原有内容里仍然有效的部分。" +
+      "用户让你改你自己的设定，或你在了解用户需求后需要把约定写下来时使用。内置的 Naimakes 没有指令可改，它的外观用 update_assistant_settings。",
+    input: shape(
+      {
+        agent_id: ref("要修改的智能体 id，不填就是你自己"),
+        name: str("新名字", 20, 1),
+        instructions: str("新的完整指令", 2000),
+        shape: oneOf(shapes, "形状"),
+        color: oneOf(colors, "颜色"),
+      },
+      [],
+    ),
+    async run(input, { call, agent }) {
+      const { agent_id: target, ...patch } = input;
+      const id = target || agent;
+      if (!id || id === "naimakes") throw new ActionError("内置的 Naimakes 没有自定义指令可改；它的外观请用 update_assistant_settings。");
+      if (!Object.keys(patch).length) throw new ActionError("请指定要修改的内容。");
+      const { agent: updated } = await call("PATCH", "/assistant/agents/" + enc(id), patch);
+      const changed = [patch.name && "名字", patch.instructions !== undefined && "指令", (patch.shape || patch.color) && "外观"].filter(Boolean).join("、");
+      return { data: { agent_id: updated.id, name: updated.name }, summary: `已更新「${updated.name}」的${changed}`, effect: { agent: { id: updated.id, kind: "updated" } } };
+    },
+  },
+  {
+    name: "set_main_agent",
+    title: "设置主智能体",
+    kind: "write",
+    interactive: true,
+    description: "把某个智能体设为主智能体——常驻屏幕的那个小球就会换成它。agent_id 来自 list_agents；内置的 Naimakes 的 id 是 naimakes。",
+    input: shape({ agent_id: ref("智能体 id") }, ["agent_id"]),
+    async run(input, { call }) {
+      const { agents } = await call("PUT", "/assistant/main-agent", { id: input.agent_id });
+      const name = input.agent_id === "naimakes" ? "Naimakes" : agents.find((a) => a.id === input.agent_id)?.name || "智能体";
+      return { data: { main: input.agent_id }, summary: `已把「${name}」设为主智能体`, effect: { agent: { id: input.agent_id, kind: "updated" } } };
+    },
+  },
+
   // —— 定时任务（只在和用户的对话里可用，定时运行时不能再设定新的任务） ——
   {
     name: "list_scheduled_tasks",
@@ -951,10 +1041,10 @@ const actionList = [
       }
       return preview("设置定时任务", [field("名称", task.title), field("时间", task.schedule), field("自动执行操作", task.allow_actions ? "允许（发帖、评论等会直接执行）" : "不允许（只汇报，不执行需要确认的操作）")], task.prompt);
     },
-    async run(input, { user, tz }) {
+    async run(input, { user, tz, agent }) {
       let task;
       try {
-        task = createTask(user.id, input, { tz });
+        task = createTask(user.id, input, { tz, agent: agent && agent !== "naimakes" ? agent : null });
       } catch (error) {
         throw new ActionError(error.message, error.status || 400);
       }

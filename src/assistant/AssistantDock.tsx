@@ -9,6 +9,9 @@ import { useMotionPreferences } from "../forum/motion/motion-preferences";
 import { ThinkingSwitch } from "./ThinkingSwitch";
 import AssistantDetails from "./AssistantDetails";
 import AssistantHistory from "./AssistantHistory";
+import AssistantNewChat from "./AssistantNewChat";
+import { AgentAvatar, AgentCluster } from "./AgentAvatar";
+import { connectAgents, useAgents, type Agent } from "./agents";
 import AssistantPicker, { type PickerTab } from "./AssistantPicker";
 import AssistantMemory from "./AssistantMemory";
 import AssistantTasks from "./AssistantTasks";
@@ -16,14 +19,15 @@ import { openShare } from "../forum/share/share-api";
 import AssistantShared from "./AssistantShared";
 import { BotFigure, type BotLook } from "./BotFigure";
 import { accept, MAX_FILES, readAttachment, type Attachment } from "./attachments";
-import { answerCount, ask, branchFrom, openChat, cancelAction, clearChat, confirmAction, editMessage, markRead, regenerate, retryLast, stopReply, switchOwner, switchVersion, useChat, type AgentAction, type ChatMessage } from "./chat";
+import { answerChoice, answerCount, ask, branchFrom, openChat, cancelAction, clearChat, confirmAction, editMessage, markRead, regenerate, retryLast, startOnboarding, stopReply, switchOwner, switchVersion, useChat, type AgentAction, type ChatMessage } from "./chat";
 import { useVoiceInput, voiceSupported } from "./voice";
 import ContextMenu, { useContextMenu } from "../forum/ui/ContextMenu";
 import { longPressMenu, type MenuPoint } from "../forum/ui/GlassSegments";
 import { isPostRequest, pickMood, taskDifficulty } from "./mood";
 import { go, recentlyViewed } from "./nav";
-import { connectAccount, readPosition, savePosition, useNotify, usePrefs } from "./prefs";
+import { connectAccount, readPosition, savePosition, useNotify } from "./prefs";
 import "./assistant.css";
+import "./assistant-agents.css";
 
 type Vec = { x: number; y: number };
 type Box = { left: number; top: number; width: number; height: number; origin: string; sheet: boolean };
@@ -153,6 +157,8 @@ export type MessageTools = {
   onRegenerate: () => void;
   onBranch: (message: ChatMessage) => void;
   onSwitch: (id: string, to: number) => void;
+  onChoose: (message: ChatMessage, index: number) => void;
+  onOther: () => void;
   onEditText: (text: string) => void;
   onEditSave: () => void;
   onEditCancel: () => void;
@@ -201,7 +207,38 @@ function EditBox({ tools }: { tools: MessageTools }) {
   );
 }
 
-function Message({ message, onLink, onRetry, last, tools }: { message: ChatMessage; onLink: (href: string) => void; onRetry: () => void; last: boolean; tools?: MessageTools }) {
+const choiceLetters = "ABCDEFGH";
+
+// 智能体提的选择题：点一项就是回答；也可以选「其他」自己输入。用户没点、直接打字回答的，卡片显示「已忽略」。
+function ChoicesCard({ message, active, tools }: { message: ChatMessage; active: boolean; tools?: MessageTools }) {
+  const choices = message.choices!;
+  const closed = !active;
+  const other = choices.options.length;
+  return (
+    <div className={"assistant-choices" + (closed ? " is-closed" : "")} role="group" aria-label={choices.question}>
+      <strong>{choices.question}</strong>
+      <ol>
+        {choices.options.map((option, index) => (
+          <li key={index}>
+            <button type="button" className={"assistant-choice" + (choices.picked === index ? " is-picked" : "")} disabled={closed || !tools} onClick={() => tools?.onChoose(message, index)}>
+              <b aria-hidden="true">{choiceLetters[index]}</b>
+              {option}
+            </button>
+          </li>
+        ))}
+        <li>
+          <button type="button" className="assistant-choice" disabled={closed || !tools} onClick={() => tools?.onOther()}>
+            <b aria-hidden="true">{choiceLetters[other]}</b>
+            其他，我来说明
+          </button>
+        </li>
+      </ol>
+      {closed && choices.picked === undefined && <small>已忽略</small>}
+    </div>
+  );
+}
+
+function Message({ message, onLink, onRetry, last, tools, who }: { message: ChatMessage; onLink: (href: string) => void; onRetry: () => void; last: boolean; tools?: MessageTools; who?: Pick<Agent, "name" | "shape" | "color"> | null }) {
   const menu = tools ? longPressMenu((event) => tools.onMenu(event, message)) : {};
   if (message.role === "user") {
     const editing = tools?.editing?.id === message.id;
@@ -227,12 +264,18 @@ function Message({ message, onLink, onRetry, last, tools }: { message: ChatMessa
   }
   const sources = (message.sources || []).slice(0, 4);
   const actions = message.actions || [];
-  const empty = !message.content && !message.error && !actions.length;
+  const empty = !message.content && !message.error && !actions.length && !message.choices;
   if (empty) return null;
   const count = answerCount(message);
   const current = message.vi ?? count - 1;
   return (
     <div className={"assistant-msg is-bot" + (message.branch ? " is-branch" : "")} {...menu}>
+      {who && (
+        <span className="assistant-msg-who">
+          <AgentAvatar agent={who} size={20} />
+          {who.name}
+        </span>
+      )}
       {message.content && (
         <div className="assistant-markdown">
           <ReactMarkdown
@@ -264,6 +307,7 @@ function Message({ message, onLink, onRetry, last, tools }: { message: ChatMessa
           )}
         </div>
       )}
+      {message.choices && <ChoicesCard message={message} active={last && !!tools?.idle && message.choices.picked === undefined} tools={tools} />}
       {actions.length > 0 && (
         <div className="assistant-actions">
           {actions.map((action) => (
@@ -379,12 +423,12 @@ function useTopLayerHost() {
 export default function AssistantDock({ userId, shared = null }: { userId: string | null; shared?: { token: string; nonce: number } | null }) {
   const [sharedToken, setSharedToken] = useState("");
   const host = useTopLayerHost();
-  const prefs = usePrefs();
+  const { agents, main, mainId, byId } = useAgents();
   const chat = useChat();
   const { reduced } = useMotionPreferences();
   const notify = useNotify();
   const [open, setOpen] = useState(false);
-  const [view, setView] = useState<"chat" | "details" | "history" | "shared" | "picker" | "memory" | "tasks">("chat");
+  const [view, setView] = useState<"chat" | "details" | "history" | "shared" | "picker" | "memory" | "tasks" | "newchat">("chat");
   const [pickerTab, setPickerTab] = useState<PickerTab>("library");
   const attachMenu = useContextMenu<null>();
   const [settled, setSettled] = useState<"success" | "error" | null>(null);
@@ -425,6 +469,7 @@ export default function AssistantDock({ userId, shared = null }: { userId: strin
 
   useEffect(() => {
     connectAccount(userId);
+    void connectAgents(userId);
     switchOwner(userId);
   }, [userId]);
 
@@ -810,6 +855,23 @@ export default function AssistantDock({ userId, shared = null }: { userId: strin
   };
   const recent = open ? recentlyViewed() : null;
   const visible = () => openRef.current && !document.hidden;
+  // 新建了智能体（设置页里创建，或某个智能体替用户创建）：打开与它的第一段对话，由它先开口。
+  const onboardRef = useRef<(agent: string) => void>(() => {});
+  onboardRef.current = (agent) => {
+    setDraft("");
+    setFiles([]);
+    setView("chat");
+    openPanel();
+    void startOnboarding(agent, page(), { visible });
+  };
+  useEffect(() => {
+    const handler = (event: Event) => {
+      const agent = (event as CustomEvent<{ agent?: string }>).detail?.agent;
+      if (agent) onboardRef.current(agent);
+    };
+    window.addEventListener("nmk-assistant-onboard", handler);
+    return () => window.removeEventListener("nmk-assistant-onboard", handler);
+  }, []);
   const complain = (message: string) => {
     clearTimeout(errorTimer.current);
     setFileError(message);
@@ -882,7 +944,15 @@ export default function AssistantDock({ userId, shared = null }: { userId: strin
     go(href);
   };
 
-  const look = useMemo(() => ({ shape: prefs.shape, color: prefs.color }), [prefs.shape, prefs.color]);
+  // 小球是主智能体；对话窗口里是这段对话的智能体（群聊是几个一起）。
+  const ballLook = useMemo(() => ({ shape: main.shape, color: main.color }), [main.shape, main.color]);
+  const chatAgents = chat.agents.map(byId);
+  const lead = chatAgents[0] ?? main;
+  const group = chatAgents.length > 1;
+  const chatLook = useMemo(() => ({ shape: lead.shape, color: lead.color }), [lead.shape, lead.color]);
+  const replying = byId(chat.messages[chat.messages.length - 1]?.agent || lead.id);
+  const workLook = useMemo(() => ({ shape: replying.shape, color: replying.color }), [replying.shape, replying.color]);
+  const chatName = group ? chatAgents.map((a) => a.name).join("、") : lead.name;
 
   const unread = chat.unread && notify;
   const lastAsk = [...chat.messages].reverse().find((m) => m.role === "user");
@@ -934,7 +1004,8 @@ export default function AssistantDock({ userId, shared = null }: { userId: strin
   const lastMessageIsBot = chat.messages[lastIndex]?.role === "assistant";
   const tools: MessageTools = {
     idle: chat.phase === "idle",
-    lastBotId: lastMessageIsBot ? lastBotId : "",
+    // 智能体先开口、用户还没说话的对话没有可以重新回答的问题。
+    lastBotId: lastMessageIsBot && chat.messages.some((m) => m.role === "user") ? lastBotId : "",
     editing,
     copied,
     onMenu: (event, message) => messageMenu.open(event, message),
@@ -949,6 +1020,8 @@ export default function AssistantDock({ userId, shared = null }: { userId: strin
       }
     },
     onSwitch: switchVersion,
+    onChoose: (message, index) => answerChoice(message.id, index, page(), { visible }),
+    onOther: () => input.current?.focus({ preventScroll: true }),
     onEditText: (text) => setEditing((current) => (current ? { ...current, text } : current)),
     onEditSave: () => {
       if (!editing?.text.trim()) return;
@@ -973,13 +1046,15 @@ export default function AssistantDock({ userId, shared = null }: { userId: strin
     ];
   };
   const shift = reduced ? 0 : 28;
-  const newChat = () => {
-    clearChat();
+  const startChat = (ids?: string[]) => {
+    clearChat(ids);
     setDraft("");
     setFiles([]);
     setView("chat");
     requestAnimationFrame(() => input.current?.focus({ preventScroll: true }));
   };
+  // 有不止一个智能体时，先问和谁聊：单聊选一个，群聊选两三个。
+  const newChat = () => (agents.length > 1 ? setView("newchat") : startChat());
 
   return createPortal(
     <div className="assistant-root" onKeyDown={(event) => {
@@ -999,7 +1074,7 @@ export default function AssistantDock({ userId, shared = null }: { userId: strin
           ref={ball}
           type="button"
           className="assistant-ball"
-          aria-label={open ? "收起 Naimakes" : "打开 Naimakes（可拖动，方向键也能移动位置）"}
+          aria-label={open ? `收起 ${main.name}` : `打开 ${main.name}（可拖动，方向键也能移动位置）`}
           aria-expanded={open}
           aria-haspopup="dialog"
           tabIndex={open ? -1 : 0}
@@ -1019,7 +1094,7 @@ export default function AssistantDock({ userId, shared = null }: { userId: strin
           }}
         >
           <span className="assistant-ball-sheen" aria-hidden="true" />
-          <BotFigure look={look} state={agentState} paused={open} follow={false} fps={30} className="assistant-ball-bot" />
+          <BotFigure look={ballLook} state={agentState} paused={open} follow={false} fps={30} className="assistant-ball-bot" />
           {unread && !open && <span className="assistant-ball-badge" aria-hidden="true" />}
         </button>
       </div>
@@ -1050,15 +1125,19 @@ export default function AssistantDock({ userId, shared = null }: { userId: strin
                 <LiquidButton
                   type="button"
                   className="assistant-identity"
-                  aria-label="查看 Naimakes 详情"
+                  aria-label={`查看 ${chatName} 详情`}
                   title="详情"
                   onClick={() => setView("details")}
                 >
-                  <span className="assistant-identity-avatar">
-                    <BotFigure look={look} state={headState} fps={30} follow={false} />
-                  </span>
+                  {group ? (
+                    <AgentCluster agents={chatAgents} size={40} />
+                  ) : (
+                    <span className="assistant-identity-avatar">
+                      <BotFigure look={chatLook} state={headState} fps={30} follow={false} />
+                    </span>
+                  )}
                   <span className="assistant-identity-text">
-                    <strong>Naimakes</strong>
+                    <strong title={chatName}>{group ? `群聊（${chatAgents.length}）` : lead.name}</strong>
                     <small aria-live="polite" title={chat.phase === "idle" ? chat.title : undefined}>
                       {chat.phase === "idle" && chat.title ? chat.title : status}
                     </small>
@@ -1069,7 +1148,7 @@ export default function AssistantDock({ userId, shared = null }: { userId: strin
                   <LiquidButton type="button" className="icon-button assistant-icon" aria-label="历史对话" title="历史对话" onClick={() => setView("history")}>
                     <History size={16} />
                   </LiquidButton>
-                  <LiquidButton type="button" className="icon-button assistant-icon" aria-label="开始新对话" title="新对话" disabled={!chat.messages.length} onClick={newChat}>
+                  <LiquidButton type="button" className="icon-button assistant-icon" aria-label="开始新对话" title="新对话" disabled={!chat.messages.length && agents.length < 2} onClick={newChat}>
                     <SquarePen size={16} />
                   </LiquidButton>
                   <LiquidButton type="button" className="icon-button assistant-icon" aria-label="最小化" title="最小化" onClick={closePanel}>
@@ -1083,23 +1162,42 @@ export default function AssistantDock({ userId, shared = null }: { userId: strin
 
               <div className="assistant-body" ref={list}>
                 {chat.messages.length === 0 ? (
-                  <div className="assistant-welcome">
-                    <h3>你好，我是 Naimakes。</h3>
-                    <p>可以帮你查找本站文章、推荐感兴趣的讨论，也能讲讲网站怎么用。登录后，还能替你关注、收藏、发帖、评论和发私信。</p>
-                    <div className="assistant-chips">
-                      {(recent ? [`「${recent.title.length > 14 ? recent.title.slice(0, 14) + "…" : recent.title}」讲了什么？`, ...suggestions.slice(0, 3)] : suggestions).map((text) => (
-                        <LiquidButton key={text} type="button" className="assistant-chip" onClick={() => send(text)}>
-                          {text}
-                        </LiquidButton>
-                      ))}
+                  group ? (
+                    <div className="assistant-welcome">
+                      <h3>群聊：{chatName}</h3>
+                      <p>你发的每条消息，群里的智能体会按顺序轮流回答。用 @名字 可以只让某个智能体回答。</p>
+                      <div className="assistant-chips">
+                        {chatAgents.map((agent) => (
+                          <LiquidButton key={agent.id} type="button" className="assistant-chip" onClick={() => { setDraft((text) => `${text}${text && !text.endsWith(" ") ? " " : ""}@${agent.name} `); input.current?.focus({ preventScroll: true }); }}>
+                            <AgentAvatar agent={agent} size={20} />@{agent.name}
+                          </LiquidButton>
+                        ))}
+                      </div>
                     </div>
-                  </div>
+                  ) : lead.builtin ? (
+                    <div className="assistant-welcome">
+                      <h3>你好，我是 Naimakes。</h3>
+                      <p>可以帮你查找本站文章、推荐感兴趣的讨论，也能讲讲网站怎么用。登录后，还能替你关注、收藏、发帖、评论和发私信。</p>
+                      <div className="assistant-chips">
+                        {(recent ? [`「${recent.title.length > 14 ? recent.title.slice(0, 14) + "…" : recent.title}」讲了什么？`, ...suggestions.slice(0, 3)] : suggestions).map((text) => (
+                          <LiquidButton key={text} type="button" className="assistant-chip" onClick={() => send(text)}>
+                            {text}
+                          </LiquidButton>
+                        ))}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="assistant-welcome">
+                      <h3>你好，我是{lead.name}。</h3>
+                      <p>{lead.instructions.trim() ? "我的设定：" + lead.instructions.trim().replace(/\s+/g, " ").slice(0, 90) + (lead.instructions.trim().length > 90 ? "…" : "") : "我还没有设定指令。先和我聊聊，说说你想让我做什么吧。"}</p>
+                    </div>
+                  )
                 ) : (
                   chat.messages.map((message, index) => (
-                    <Message key={message.id} message={message} last={index === lastIndex} onLink={follow} onRetry={() => retryLast(page(), { visible })} tools={tools} />
+                    <Message key={message.id} message={message} last={index === lastIndex} onLink={follow} onRetry={() => retryLast(page(), { visible })} tools={tools} who={group && message.role === "assistant" ? byId(message.agent || lead.id) : null} />
                   ))
                 )}
-                {chat.phase !== "idle" && <WorkingRow look={look} state={agentState} status={status} />}
+                {chat.phase !== "idle" && <WorkingRow look={workLook} state={agentState} status={group || !lead.builtin ? `${replying.name}：${status}` : status} />}
               </div>
 
               <form
@@ -1166,7 +1264,7 @@ export default function AssistantDock({ userId, shared = null }: { userId: strin
                     value={draft}
                     rows={1}
                     maxLength={2000}
-                    placeholder={voice.listening ? "正在听，请说话…" : files.length ? "说说想让我看什么…" : "问问本站的内容或功能…"}
+                    placeholder={voice.listening ? "正在听，请说话…" : files.length ? "说说想让我看什么…" : group ? "发消息，用 @名字 点名…" : lead.builtin ? "问问本站的内容或功能…" : `给${lead.name}发消息…`}
                     aria-label="输入问题"
                     enterKeyHint="send"
                     onChange={(event) => {
@@ -1256,13 +1354,31 @@ export default function AssistantDock({ userId, shared = null }: { userId: strin
                   <AssistantDetails
                     state={headState}
                     status={status}
+                    agents={chatAgents}
                     messageCount={chat.messages.length}
                     onBack={() => setView("chat")}
                     onClose={() => { stopReply(); closePanel(); markRead(); }}
                     onNewChat={newChat}
-                    onSettings={() => follow("/settings#assistant")}
+                    onSettings={() => follow(lead.builtin && !group ? "/settings#assistant" : "/settings#agents")}
                     onMemory={() => setView("memory")}
                     onTasks={() => setView("tasks")}
+                  />
+                </motion.div>
+              )}
+              {view === "newchat" && (
+                <motion.div
+                  key="newchat"
+                  className="assistant-layer"
+                  initial={{ opacity: 0, x: shift }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: shift }}
+                  transition={reduced ? { duration: 0.01 } : { type: "spring", stiffness: 380, damping: 36 }}
+                >
+                  <AssistantNewChat
+                    onBack={() => setView("chat")}
+                    onClose={() => { stopReply(); closePanel(); markRead(); }}
+                    onStart={startChat}
+                    onManage={() => follow("/settings#agents")}
                   />
                 </motion.div>
               )}

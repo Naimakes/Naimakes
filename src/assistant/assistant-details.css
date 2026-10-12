@@ -252,8 +252,9 @@
 .assistant-history-open {
   display: flex;
   flex: 1;
-  flex-direction: column;
-  gap: 2px;
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
   min-width: 0;
   padding: 10px 12px;
   border: 0;
@@ -353,3 +354,7 @@
   border-top: 1px solid var(--assistant-line);
 }
 .assistant-shared-foot p { margin: 0; color: var(--assistant-soft); font-size: 12px; }
+
+/* 历史对话：左边是智能体的头像，右边是标题 */
+.assistant-history-text { display: flex; flex: 1; flex-direction: column; gap: 2px; min-width: 0; }
+.assistant-history-open small { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }

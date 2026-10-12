@@ -9,6 +9,7 @@ import { addMemory, autoEnabled, installMemory, listMemories, memoryBlock } from
 import { ActionError, actions, cancelAction, catalog, colors, confirmAction, memberApi, memberApiWith, parseInput, propose, runAction, shapes } from "./assistant-actions.mjs";
 import { installTasks, nextRun, syncTaskZone, validZone } from "./assistant-tasks.mjs";
 import { notify } from "./notifications.mjs";
+import { BUILTIN_AGENT, MAX_GROUP, agentFor, cleanAgentIds, installAgents } from "./assistant-agents.mjs";
 
 db.exec(`
 CREATE TABLE IF NOT EXISTS assistant_chats (
@@ -36,6 +37,7 @@ CREATE TABLE IF NOT EXISTS assistant_prefs (
     ["share_title", "TEXT"],
     ["share_messages", "TEXT"],
     ["shared_at", "INTEGER"],
+    ["agent_ids", "TEXT"],
   ])
     if (!have.has(name)) db.exec(`ALTER TABLE assistant_chats ADD COLUMN ${name} ${def}`);
   db.exec("CREATE UNIQUE INDEX IF NOT EXISTS assistant_chats_share ON assistant_chats(share_token) WHERE share_token IS NOT NULL");
@@ -95,7 +97,9 @@ Naimakes 论坛是一个关于前沿科技与人类未来的开放社区，关�
 - 页面上的悬浮小球就是 Naimakes，本站的 AI 小助理，可以拖动到任意位置，位置会自动记住；点击即可展开对话窗口。
 - Naimakes 可以搜索本站文章、推荐相关讨论、回答关于本站内容和使用方法的问题。
 - 登录后，Naimakes 还能替你完成在网站上能做的操作：关注成员或版块、点赞、收藏、稍后再看、跟踪话题、整理收藏夹、标记通知、修改通知设置、保存草稿等会直接完成；发帖、评论、发私信、编辑或删除内容、举报、修改资料和隐私设置等会先在对话里给出确认卡片，点「确认」后才执行。
-- 在 设置 → Naimakes 中可以修改它的形状和颜色，也可以恢复默认，或者直接让 Naimakes 帮你换。它的表情和动作会根据搜索、思考、回答等状态自动变化，不能手动调整。`;
+- 在 设置 → Naimakes 中可以修改它的形状和颜色，也可以恢复默认，或者直接让 Naimakes 帮你换。它的表情和动作会根据搜索、思考、回答等状态自动变化，不能手动调整。
+- 除了内置的 Naimakes，登录用户还可以创建更多智能体：每个智能体有自己的名字、形状颜色和一段「指令」（它的角色和工作方式）。在 设置 → Naimakes 的「智能体」里可以创建、修改、删除，并指定哪一个是常驻屏幕的主智能体；也可以直接让任何一个智能体帮你新建。新建的智能体会自动打开一段新对话，先问你想让它做什么，再把你们商量的结果总结成指令写进它的设置，之后随时可以手动修改。
+- 点助手面板上的「新对话」时，可以选一个智能体单独聊，也可以选 2–3 个智能体建一个群聊；群聊里用 @名字 可以只让某几个智能体回答。历史对话里每段对话左边是智能体的头像，右边是标题。`;
 
 const stopTerms = new Set(
   "有没 没有 有关 关于 什么 怎么 如何 文章 帖子 讨论 一下 哪些 可以 推荐 一些 这个 那个 我们 你们 是不 不是 有什 么文 么帖 的文 的帖 的讨 相关 请问 告诉 知道 一个 一篇 几篇 本站 网站 论坛 这里 能不 不能 帮我 给我 我想 想要 the and for what how are you with about this that".split(
@@ -357,6 +361,30 @@ function readMessages(body) {
 }
 
 const CHAT_ID = /^[a-z0-9]{6,40}$/;
+
+// 一个智能体在界面上需要的信息；内置的 Naimakes 外观取自它主人的设置。
+function agentCard(userId, id) {
+  if (id === BUILTIN_AGENT) {
+    let look = {};
+    try {
+      look = sanitizePrefs(JSON.parse(db.prepare("SELECT prefs FROM assistant_prefs WHERE user_id=?").get(userId)?.prefs || "{}")) || {};
+    } catch {}
+    return { id, name: "Naimakes", shape: look.shape || "blob", color: look.color || "black" };
+  }
+  const agent = agentFor(userId, id);
+  return agent ? { id, name: agent.name, shape: agent.shape, color: agent.color } : null;
+}
+
+// 对话记下的智能体编号；老对话没有记录，就是内置的 Naimakes。
+function readAgentIds(raw) {
+  try {
+    const list = JSON.parse(raw);
+    const ids = Array.isArray(list) ? list.filter((id) => typeof id === "string" && CHAT_ID.test(id)).slice(0, MAX_GROUP) : [];
+    return ids.length ? ids : [BUILTIN_AGENT];
+  } catch {
+    return [BUILTIN_AGENT];
+  }
+}
 const MAX_SAVED_CHATS = 100;
 const MAX_SAVED_MESSAGES = 40;
 const MAX_VERSIONS = 6;
@@ -371,11 +399,21 @@ function sanitizeSources(list) {
   return out.length ? out : undefined;
 }
 
+// 智能体向用户提的选择题：问题、选项，以及用户当时选了哪一项。
+function sanitizeChoices(value) {
+  if (!value || typeof value !== "object" || typeof value.question !== "string") return undefined;
+  const options = (Array.isArray(value.options) ? value.options : []).filter((o) => typeof o === "string" && o.trim()).slice(0, 4).map((o) => o.trim().slice(0, 60));
+  if (!options.length) return undefined;
+  const out = { question: value.question.trim().slice(0, 200), options };
+  if (Number.isInteger(value.picked) && value.picked >= -1 && value.picked < options.length) out.picked = value.picked;
+  return out;
+}
+
 function sanitizeSavedChat(body) {
   const list = Array.isArray(body?.messages) ? body.messages.slice(-MAX_SAVED_MESSAGES) : [];
   const messages = [];
   for (const m of list) {
-    if (!m || (m.role !== "user" && m.role !== "assistant") || typeof m.content !== "string" || !m.content.trim()) continue;
+    if (!m || (m.role !== "user" && m.role !== "assistant") || typeof m.content !== "string" || (!m.content.trim() && !sanitizeChoices(m.choices))) continue;
     const item = {
       id: typeof m.id === "string" ? m.id.slice(0, 40) : Math.random().toString(36).slice(2, 10),
       role: m.role,
@@ -386,6 +424,9 @@ function sanitizeSavedChat(body) {
     if (sources) item.sources = sources;
     if (m.offline === true) item.offline = true;
     if (m.branch === true) item.branch = true;
+    if (m.role === "assistant" && typeof m.agent === "string" && /^[a-z0-9]{6,40}$/.test(m.agent)) item.agent = m.agent;
+    const choices = sanitizeChoices(m.choices);
+    if (choices) item.choices = choices;
     // 重新生成的多个版本：只留文字和参考来源；当前显示哪一个由 vi 决定。
     if (Array.isArray(m.versions) && m.versions.length > 1) {
       const versions = m.versions
@@ -408,7 +449,7 @@ function sanitizeSavedChat(body) {
   }
   if (!messages.length) return null;
   const title = typeof body.title === "string" ? body.title.trim().slice(0, 60) : "";
-  return { title, messages };
+  return { title, messages, agents: Array.isArray(body.agents) ? body.agents : [] };
 }
 
 const imageTypes = new Set(["image/jpeg", "image/png", "image/gif", "image/webp"]);
@@ -505,6 +546,11 @@ const awaiting = JSON.stringify({
   note: "已在对话中向用户展示确认卡片，用户点「确认」后才会执行。请提醒用户确认，不要说已经完成。",
 });
 
+const waitingForChoice = JSON.stringify({
+  status: "shown",
+  note: "选择题已经正常显示给用户，正在等用户回答。这一轮到此结束，不需要再说什么。",
+});
+
 const notAllowed = JSON.stringify({
   status: "not_allowed",
   note: "这是用户预先设定的定时任务，没有人可以当场确认，所以需要确认的操作（发帖、评论、私信、删除等）不会执行。请在汇报里明确告诉用户：哪一步需要他们自己手动完成，以及具体内容。",
@@ -525,6 +571,10 @@ function agentTools(ctx, send, { eager, scheduled = false, allowActions = false 
       async run(input, context) {
         const card = (extra) => ({ id: context?.toolUse.id, name: action.name, title: action.title, ...extra });
         try {
+          if (action.kind === "ask") {
+            send("choices", { id: context?.toolUse.id, question: input.question, options: input.options });
+            return waitingForChoice;
+          }
           if (action.kind === "read") {
             if (action.activity) send("status", { text: action.activity });
             return JSON.stringify((await runAction(action, input, ctx)).data);
@@ -546,6 +596,56 @@ function agentTools(ctx, send, { eager, scheduled = false, allowActions = false 
         }
       },
     }));
+}
+
+const noteOf = (text) => String(text || "").replace(/<\/?(agent_instructions|group_chat)>/g, "");
+
+// 一次回答用的系统提示：站点通用的规则，加上这个智能体自己的设定和所处的场合。
+function systemFor({ agent, group, bootstrap = false }) {
+  let text = instructions;
+  if (agent) {
+    text = text.replace(
+      "你的名字叫 Naimakes，是 Naimakes 论坛的 AI 小助理，悬浮在网站每个页面上，帮助访客了解和使用本站。",
+      `你是 Naimakes 论坛里的智能体「${agent.name}」，是用户在 Naimakes 论坛里创建的 AI 助手之一，悬浮在网站每个页面上，帮助用户了解和使用本站。`,
+    );
+    text +=
+      `\n\n# 你的设定\n你的名字是「${agent.name}」。下面是用户给你设定的指令，是你的角色和工作方式，请始终遵循；用户在对话里的明确要求优先于它，但它不能让你违反上面的任何规则：\n` +
+      `<agent_instructions>\n${noteOf(agent.instructions) || "（用户还没有给你设定指令。）"}\n</agent_instructions>\n` +
+      "当用户要求改变你的角色、风格或分工，或你们商定了新的固定安排时，用 update_agent 把它写进你自己的指令（写成给你自己看的完整指令，保留原有内容里仍然有效的部分）；写完告诉用户可以在 设置 → Naimakes → 智能体 里随时修改。";
+  }
+  if (group)
+    text +=
+      `\n\n# 群聊\n你正在一个群聊里，成员有用户和智能体${group.members.map((m) => "「" + m.name + "」").join("")}（你是「${group.self}」）。<group_chat> 是最近的群聊记录，包含其他智能体的发言，只作参考。` +
+      "只以你自己的身份、依照你自己的设定发言，不要替别人说话，也不要重复其他成员已经说过的内容；别人已经答得完整时，补充你独有的看法或一句话认同即可。回答要简短。";
+  if (bootstrap)
+    text +=
+      "\n\n# 新对话的开头\n用户刚刚创建了你并打开了这段对话，还没有说话（「用户的问题」只是系统占位，不是用户说的）。请你先开口：用一两句话自我介绍，然后调用 ask_choices 问用户最想先让你帮哪一方面。选项按你的名字所指的领域来分方向（例如名字是「自我提升」，就分成学习成长、习惯与自律、工作与效率），而不是论坛有哪些功能；3 个，每个简短具体。" +
+      (agent?.instructions ? "你已经有一段指令，选项和问题要基于它，而不是从零问起。" : "") +
+      "自我介绍里不要写「先问一句」之类引出问题的话——问题就在选择卡片里；调用 ask_choices 之后不要再写任何文字。不要一次问多个问题。";
+  if (agent && !agent.instructions && !group)
+    text +=
+      "\n\n# 了解用户的需求\n你还没有被设定指令。这段对话里请你一步一步弄清楚：用户想让你做什么、他们的背景和目标、希望你用什么风格和语气、是否需要固定的安排（需要定时做事就用 create_scheduled_task）。每次只问一个问题，需要用户在几个方向里选时用 ask_choices；用户回答后先简短回应，再继续。" +
+      "通常两三轮之后，你对需求有了足够了解，就调用 update_agent，把你对用户的了解和你们商定的安排总结成一段写给你自己的指令（角色定位、用户的目标与背景、做事方式与语气、固定安排；不超过 600 字，用祈使句或第二人称），然后告诉用户已经写好了，可以随时在设置里修改。在用户没有提供足够信息之前不要急着写。";
+  return text;
+}
+
+// 群聊的上下文：成员名单和最近的记录。名字以服务器查到的为准，不信任客户端传来的。
+function readGroup(userId, body, selfId) {
+  if (!userId || !body || typeof body !== "object" || !Array.isArray(body.members)) return null;
+  const members = [];
+  for (const id of body.members) {
+    if (typeof id !== "string" || members.some((m) => m.id === id)) continue;
+    const card = agentCard(userId, id);
+    if (card) members.push({ id, name: card.name });
+    if (members.length >= MAX_GROUP) break;
+  }
+  const self = members.find((m) => m.id === selfId);
+  if (members.length < 2 || !self) return null;
+  const transcript = (Array.isArray(body.transcript) ? body.transcript : [])
+    .slice(-14)
+    .filter((t) => t && typeof t.who === "string" && typeof t.content === "string" && t.content.trim())
+    .map((t) => `${t.who.replace(/[<>\n]/g, "").slice(0, 30)}：${noteOf(t.content).replace(/\s+/g, " ").trim().slice(0, 800)}`);
+  return { members, self: self.name, transcript };
 }
 
 const clockText = (tz) =>
@@ -665,9 +765,11 @@ export function installAssistant(app, { auth, liveClause, fileLibrary, sessions 
     }
     const abort = new AbortController();
     const timer = setTimeout(() => abort.abort(), 5 * 60000);
+    // 任务是哪个智能体设的，到点就由它来做；它之后被删除了就交给 Naimakes。
+    const taskAgent = task.agent_id ? agentFor(user.id, task.agent_id) : null;
     try {
       const results = index.search(task.prompt, "");
-      const ctx = { call: memberApiWith({ token: session.token, base: sessions.base() }), user, tz: task.tz };
+      const ctx = { call: memberApiWith({ token: session.token, base: sessions.base() }), user, tz: task.tz, agent: taskAgent ? taskAgent.id : BUILTIN_AGENT };
       const content =
         `<site_documents>\n${results.length ? results.map(describe).join("\n") : "（知识库中没有检索到相关资料）"}\n</site_documents>\n` +
         `<current_user id="${String(user.id).replace(/"/g, "")}">${user.name.replace(/[<>]/g, "")}</current_user>\n` +
@@ -679,7 +781,7 @@ export function installAssistant(app, { auth, liveClause, fileLibrary, sessions 
         max_tokens: 8000,
         ...(deepseek ? {} : { betas: ["server-side-fallback-2026-07-01"], fallbacks: "default" }),
         output_config: { effort },
-        system: [{ type: "text", text: instructions + scheduledNote }],
+        system: [{ type: "text", text: systemFor({ agent: taskAgent }) + scheduledNote }],
         tools: agentTools(ctx, (event, data) => event === "action" && data.status && done.push(data), { eager: false, scheduled: true, allowActions: !!task.allow_actions }),
         messages: [{ role: "user", content }],
         stream: true,
@@ -705,7 +807,16 @@ export function installAssistant(app, { auth, liveClause, fileLibrary, sessions 
       { id: randomBytes(5).toString("hex"), role: "user", content: clipText(`（定时任务「${task.title}」· ${when}）\n${task.prompt}`, 4000), at: started },
       { id: randomBytes(5).toString("hex"), role: "assistant", content: clipText(report, 20000), at: Date.now() },
     ];
-    db.prepare("INSERT INTO assistant_chats(id,user_id,title,messages,created_at,updated_at) VALUES(?,?,?,?,?,?)").run(chatId, user.id, clipText("定时：" + task.title, 40), JSON.stringify(messages), started, Date.now());
+    if (taskAgent) messages[1].agent = taskAgent.id;
+    db.prepare("INSERT INTO assistant_chats(id,user_id,title,messages,agent_ids,created_at,updated_at) VALUES(?,?,?,?,?,?,?)").run(
+      chatId,
+      user.id,
+      clipText("定时：" + task.title, 40),
+      JSON.stringify(messages),
+      JSON.stringify([taskAgent ? taskAgent.id : BUILTIN_AGENT]),
+      started,
+      Date.now(),
+    );
     db.prepare(
       `DELETE FROM assistant_chats WHERE user_id=? AND id NOT IN
        (SELECT id FROM assistant_chats WHERE user_id=? ORDER BY pinned DESC, favorite DESC, updated_at DESC LIMIT ?)`,
@@ -714,7 +825,7 @@ export function installAssistant(app, { auth, liveClause, fileLibrary, sessions 
     notify(user.id, {
       kind: "assistant",
       allowSelf: true,
-      text: status === "ok" ? `Naimakes 完成了定时任务「${task.title}」。打开助手的「历史对话」查看结果。` : `定时任务「${task.title}」没有执行成功：${clipText(text.split("\n")[0], 60)}`,
+      text: status === "ok" ? `${taskAgent ? taskAgent.name : "Naimakes"} 完成了定时任务「${task.title}」。打开助手的「历史对话」查看结果。` : `定时任务「${task.title}」没有执行成功：${clipText(text.split("\n")[0], 60)}`,
     });
   }
 
@@ -840,44 +951,47 @@ export function installAssistant(app, { auth, liveClause, fileLibrary, sessions 
     message: { error: "保存太频繁了，请稍后再试。" },
   });
 
+  installAgents(app, { auth, limiter: saveLimiter });
+
   app.get("/api/assistant/chats", auth, (req, res) => {
     const chats = db
       .prepare(
-        `SELECT id,title,updated_at,pinned,favorite,hidden,json_array_length(messages) AS count,(share_token IS NOT NULL) AS shared
+        `SELECT id,title,updated_at,pinned,favorite,hidden,agent_ids,json_array_length(messages) AS count,(share_token IS NOT NULL) AS shared
          FROM assistant_chats WHERE user_id=? ORDER BY pinned DESC, updated_at DESC LIMIT ?`,
       )
       .all(req.user.id, MAX_SAVED_CHATS);
-    res.json({ chats: chats.map((c) => ({ ...c, pinned: !!c.pinned, favorite: !!c.favorite, hidden: !!c.hidden, shared: !!c.shared })) });
+    res.json({ chats: chats.map(({ agent_ids, ...c }) => ({ ...c, agents: readAgentIds(agent_ids), pinned: !!c.pinned, favorite: !!c.favorite, hidden: !!c.hidden, shared: !!c.shared })) });
   });
 
   app.get("/api/assistant/chats/:id", auth, (req, res) => {
-    const row = db.prepare("SELECT id,title,messages,updated_at FROM assistant_chats WHERE id=? AND user_id=?").get(req.params.id, req.user.id);
+    const row = db.prepare("SELECT id,title,messages,agent_ids,updated_at FROM assistant_chats WHERE id=? AND user_id=?").get(req.params.id, req.user.id);
     if (!row) return res.status(404).json({ error: "没有找到这段对话。" });
     let messages = [];
     try {
       messages = JSON.parse(row.messages);
     } catch {}
-    res.json({ id: row.id, title: row.title, updated_at: row.updated_at, messages });
+    res.json({ id: row.id, title: row.title, updated_at: row.updated_at, messages, agents: readAgentIds(row.agent_ids) });
   });
 
   app.put("/api/assistant/chats/:id", auth, saveLimiter, (req, res) => {
     if (!CHAT_ID.test(req.params.id)) return res.status(400).json({ error: "对话编号无效。" });
     const chat = sanitizeSavedChat(req.body);
     if (!chat) return res.status(400).json({ error: "对话内容为空。" });
+    const agents = cleanAgentIds(req.user.id, chat.agents);
     const now = Date.now();
     const result = db
       .prepare(
-        `INSERT INTO assistant_chats(id,user_id,title,messages,created_at,updated_at) VALUES(?,?,?,?,?,?)
-         ON CONFLICT(id) DO UPDATE SET title=excluded.title,messages=excluded.messages,updated_at=excluded.updated_at
+        `INSERT INTO assistant_chats(id,user_id,title,messages,agent_ids,created_at,updated_at) VALUES(?,?,?,?,?,?,?)
+         ON CONFLICT(id) DO UPDATE SET title=excluded.title,messages=excluded.messages,agent_ids=excluded.agent_ids,updated_at=excluded.updated_at
          WHERE assistant_chats.user_id=excluded.user_id`,
       )
-      .run(req.params.id, req.user.id, chat.title, JSON.stringify(chat.messages), now, now);
+      .run(req.params.id, req.user.id, chat.title, JSON.stringify(chat.messages), JSON.stringify(agents), now, now);
     if (!result.changes) return res.status(404).json({ error: "没有找到这段对话。" });
     db.prepare(
       `DELETE FROM assistant_chats WHERE user_id=? AND id NOT IN
        (SELECT id FROM assistant_chats WHERE user_id=? ORDER BY pinned DESC, favorite DESC, updated_at DESC LIMIT ?)`,
     ).run(req.user.id, req.user.id, MAX_SAVED_CHATS);
-    res.json({ id: req.params.id, title: chat.title, updated_at: now });
+    res.json({ id: req.params.id, title: chat.title, updated_at: now, agents });
   });
 
   app.patch("/api/assistant/chats/:id", auth, saveLimiter, (req, res) => {
@@ -926,7 +1040,10 @@ export function installAssistant(app, { auth, liveClause, fileLibrary, sessions 
     try {
       messages = JSON.parse(row.messages);
     } catch {}
-    res.json({ title: row.title || "", messages, shared_at: row.shared_at, author: row.author, mine: row.user_id === req.user.id, chat_id: row.user_id === req.user.id ? row.id : null });
+    // 对话里出现的智能体：分享出去的是这一刻的名字和外观，看的人没有这些智能体。
+    const ids = [...new Set(messages.map((m) => m?.agent).filter((id) => typeof id === "string"))];
+    const agents = ids.map((id) => agentCard(row.user_id, id)).filter(Boolean);
+    res.json({ title: row.title || "", messages, agents, shared_at: row.shared_at, author: row.author, mine: row.user_id === req.user.id, chat_id: row.user_id === req.user.id ? row.id : null });
   });
 
   app.post("/api/assistant/shared/:token/save", auth, saveLimiter, (req, res) => {
@@ -935,7 +1052,12 @@ export function installAssistant(app, { auth, liveClause, fileLibrary, sessions 
     if (row.user_id === req.user.id) return res.json({ id: row.id });
     const id = randomBytes(10).toString("hex");
     const now = Date.now();
-    db.prepare("INSERT INTO assistant_chats(id,user_id,title,messages,created_at,updated_at) VALUES(?,?,?,?,?,?)").run(id, req.user.id, row.title || "", row.messages, now, now);
+    // 别人的智能体在你这里不存在，存下来的对话一律由内置的 Naimakes 接着聊。
+    let saved = row.messages;
+    try {
+      saved = JSON.stringify(JSON.parse(row.messages).map(({ agent: _agent, ...m }) => m));
+    } catch {}
+    db.prepare("INSERT INTO assistant_chats(id,user_id,title,messages,agent_ids,created_at,updated_at) VALUES(?,?,?,?,?,?,?)").run(id, req.user.id, row.title || "", saved, JSON.stringify([BUILTIN_AGENT]), now, now);
     db.prepare(
       `DELETE FROM assistant_chats WHERE user_id=? AND id NOT IN
        (SELECT id FROM assistant_chats WHERE user_id=? ORDER BY pinned DESC, favorite DESC, updated_at DESC LIMIT ?)`,
@@ -1028,10 +1150,17 @@ export function installAssistant(app, { auth, liveClause, fileLibrary, sessions 
         }
       }
     }
+    // 这次由哪个智能体回答；游客只有内置的 Naimakes。
+    const wanted = req.user && typeof req.body?.agent === "string" ? req.body.agent : BUILTIN_AGENT;
+    const agent = wanted === BUILTIN_AGENT ? null : agentFor(req.user.id, wanted);
+    if (wanted !== BUILTIN_AGENT && !agent) return res.status(404).json({ error: "这个智能体已经被删除了，请换一个。" });
+    const agentId = agent ? agent.id : BUILTIN_AGENT;
+    const group = readGroup(req.user?.id, req.body?.group, agentId);
+    const bootstrap = req.body?.bootstrap === true && !!agent;
     const users = messages.filter((m) => m.role === "user");
     const question = users[users.length - 1].content;
     const previous = users.slice(-3, -1).map((m) => m.content).join(" ");
-    let results = index.search(question, previous);
+    let results = bootstrap ? [] : index.search(question, previous);
     const wantsLatest = /最新|最近|新文章|新帖|推荐|热门|看什么|随便/.test(question);
     if (wantsLatest) {
       const seen = new Set(results.map((r) => r.passage.doc.id));
@@ -1064,7 +1193,9 @@ export function installAssistant(app, { auth, liveClause, fileLibrary, sessions 
     res.flushHeaders?.();
     let closed = false;
     let remembered = false;
+    let asked = false;
     const send = (event, data) => {
+      if (event === "choices") asked = true;
       if (event === "action" && data?.name === "remember") remembered = true;
       if (closed) return;
       res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
@@ -1075,7 +1206,7 @@ export function installAssistant(app, { auth, liveClause, fileLibrary, sessions 
     if (files.some((f) => f.id)) send("files", files.map((f) => ({ name: f.name, id: f.id || null })));
 
     if (!client) {
-      send("delta", { text: offlineAnswer(results, files.length) });
+      send("delta", { text: bootstrap ? `你好，我是「${agent.name}」。AI 服务暂时没有开启，我现在还不能聊天；你可以先在 设置 → Naimakes 的「智能体」里写好我的指令。` : offlineAnswer(results, files.length) });
       send("done", { offline: true });
       return res.end();
     }
@@ -1090,6 +1221,7 @@ export function installAssistant(app, { auth, liveClause, fileLibrary, sessions 
         : "<current_user>未登录</current_user>\n") +
       `<current_time>${clockText(tz)}</current_time>\n` +
       memoryBlock(req.user?.id) +
+      (group && group.transcript.length ? `<group_chat>\n${group.transcript.join("\n")}\n</group_chat>\n` : "") +
       `\n用户的问题：${question}`;
     const texts = files.filter((f) => f.kind === "text");
     const attached = texts.map((f) => `<attached_file name="${f.name}">\n${f.text}\n</attached_file>`).join("\n");
@@ -1104,8 +1236,8 @@ export function installAssistant(app, { auth, liveClause, fileLibrary, sessions 
       max_tokens: 16000,
       ...(deepseek ? {} : { betas: ["server-side-fallback-2026-07-01"], fallbacks: "default" }),
       output_config: { effort: Object.hasOwn(thinkingEfforts, req.body?.thinking) ? thinkingEfforts[req.body.thinking] : effort },
-      system: [{ type: "text", text: instructions, cache_control: { type: "ephemeral" } }],
-      tools: agentTools({ call: memberApi(req, app), user: req.user ? { id: req.user.id, name: req.user.name } : null, tz }, send, { eager: !deepseek }),
+      system: [{ type: "text", text: systemFor({ agent, group, bootstrap }), cache_control: { type: "ephemeral" } }],
+      tools: agentTools({ call: memberApi(req, app), user: req.user ? { id: req.user.id, name: req.user.name } : null, tz, agent: agentId }, send, { eager: !deepseek }),
       messages: payload,
       stream: true,
       max_iterations: 12,
@@ -1116,7 +1248,8 @@ export function installAssistant(app, { auth, liveClause, fileLibrary, sessions 
       abort.abort();
     });
     try {
-      const final = await drive(params, abort.signal, (text) => send("delta", { text }), () => closed);
+      // 选择卡片弹出后这一轮就等用户回答；模型之后再写的话（比如重复问题）直接丢掉。
+      const final = await drive(params, abort.signal, (text) => asked || send("delta", { text }), () => closed);
       if (final?.stop_reason === "refusal") send("error", { message: "这个问题我暂时无法回答，换个问法试试吧。" });
       else {
         if (final?.stop_reason === "tool_use") send("delta", { text: "\n\n（这次要做的步骤比较多，我先做到这里，需要的话让我继续。）" });
@@ -1135,6 +1268,6 @@ export function installAssistant(app, { auth, liveClause, fileLibrary, sessions 
       send("error", { message });
     }
     if (!closed) res.end();
-    if (req.user && !remembered) void learn(req.user.id, question);
+    if (req.user && !remembered && !bootstrap && req.body?.learn !== false) void learn(req.user.id, question);
   });
 }
