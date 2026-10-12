@@ -1,5 +1,5 @@
 // 内置站主：永久写在代码里，只保存加盐的 scrypt 哈希，不保存明文密码。
-// 若存在 OWNER_BOOTSTRAP_FILE 或 secrets/owner.json，则以该文件为准。
+// 它始终生效；若另外通过 OWNER_BOOTSTRAP_FILE 或 secrets/owner.json 添加了站主，两个账号同时生效。
 export const BUILT_IN_OWNER = {
   id: "Naimakes",
   email: "naimakes@icloud.com",
