@@ -548,7 +548,7 @@ const awaiting = JSON.stringify({
 
 const waitingForChoice = JSON.stringify({
   status: "shown",
-  note: "选择题已经显示给用户，用户会点选项或自己输入回答。请直接结束这一轮，不要再用文字重复这个问题。",
+  note: "选择题已经正常显示给用户，正在等用户回答。这一轮到此结束，不需要再说什么。",
 });
 
 const notAllowed = JSON.stringify({
@@ -619,9 +619,9 @@ function systemFor({ agent, group, bootstrap = false }) {
       "只以你自己的身份、依照你自己的设定发言，不要替别人说话，也不要重复其他成员已经说过的内容；别人已经答得完整时，补充你独有的看法或一句话认同即可。回答要简短。";
   if (bootstrap)
     text +=
-      "\n\n# 新对话的开头\n用户刚刚创建了你并打开了这段对话，还没有说话（「用户的问题」只是系统占位，不是用户说的）。请你先开口：用一两句话自我介绍，然后调用 ask_choices 问用户最想先让你帮哪一方面（3 个具体、贴合你名字和已有设定的选项）。" +
+      "\n\n# 新对话的开头\n用户刚刚创建了你并打开了这段对话，还没有说话（「用户的问题」只是系统占位，不是用户说的）。请你先开口：用一两句话自我介绍，然后调用 ask_choices 问用户最想先让你帮哪一方面。选项按你的名字所指的领域来分方向（例如名字是「自我提升」，就分成学习成长、习惯与自律、工作与效率），而不是论坛有哪些功能；3 个，每个简短具体。" +
       (agent?.instructions ? "你已经有一段指令，选项和问题要基于它，而不是从零问起。" : "") +
-      "不要一次问多个问题，也不要在调用 ask_choices 之后再用文字重复这个问题。";
+      "自我介绍里不要写「先问一句」之类引出问题的话——问题就在选择卡片里；调用 ask_choices 之后不要再写任何文字。不要一次问多个问题。";
   if (agent && !agent.instructions && !group)
     text +=
       "\n\n# 了解用户的需求\n你还没有被设定指令。这段对话里请你一步一步弄清楚：用户想让你做什么、他们的背景和目标、希望你用什么风格和语气、是否需要固定的安排（需要定时做事就用 create_scheduled_task）。每次只问一个问题，需要用户在几个方向里选时用 ask_choices；用户回答后先简短回应，再继续。" +
@@ -1193,7 +1193,9 @@ export function installAssistant(app, { auth, liveClause, fileLibrary, sessions 
     res.flushHeaders?.();
     let closed = false;
     let remembered = false;
+    let asked = false;
     const send = (event, data) => {
+      if (event === "choices") asked = true;
       if (event === "action" && data?.name === "remember") remembered = true;
       if (closed) return;
       res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
@@ -1246,7 +1248,8 @@ export function installAssistant(app, { auth, liveClause, fileLibrary, sessions 
       abort.abort();
     });
     try {
-      const final = await drive(params, abort.signal, (text) => send("delta", { text }), () => closed);
+      // 选择卡片弹出后这一轮就等用户回答；模型之后再写的话（比如重复问题）直接丢掉。
+      const final = await drive(params, abort.signal, (text) => asked || send("delta", { text }), () => closed);
       if (final?.stop_reason === "refusal") send("error", { message: "这个问题我暂时无法回答，换个问法试试吧。" });
       else {
         if (final?.stop_reason === "tool_use") send("delta", { text: "\n\n（这次要做的步骤比较多，我先做到这里，需要的话让我继续。）" });
