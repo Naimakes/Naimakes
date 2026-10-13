@@ -76,7 +76,7 @@ $("#stage").innerHTML = `
     <article id="detail-content" class="detail-content"></article>
   </section>
   <div class="powered">POWERED BY <b>NAIMAKES</b><i></i></div>
-  <footer class="system-footer"><span><i class="status-light"></i> 思想，先于未来</span><span>NAIMAKES <i>／</i> <span id="clock">00:00:00</span></span><button data-action="replay" title="重播开场">重播开场 ↗</button></footer>
+  <footer class="system-footer"><span><i class="status-light"></i> 思想，先于未来</span><span>NAIMAKES <i>／</i> <span id="clock">00:00:00</span></span></footer>
   <div id="toast" class="toast" role="status"></div>
   <div id="loading" class="loading"><div class="loading-mark">${logo}</div><span>正在连接 NAIMAKES 论坛</span><i></i></div>
 `;
@@ -346,18 +346,6 @@ function updateSelection(navigation?: ArchiveNavigation) {
     button.setAttribute("aria-pressed", String(index === selected));
   });
   if (tickFocusDropped) fileTicks[files.indexOf(selected)]?.focus({ preventScroll: true });
-}
-function replayBoot() {
-  if (!ready) return;
-  closePalette(() => {
-    bootStart = performance.now() / 1000 - 1.76;
-    lastStep = "";
-    setMode(reduced ? "archive" : "boot");
-    audio.restartBoot();
-    scene?.select(0);
-    selected = 0;
-    updateSelection();
-  });
 }
 function openFile() {
   if (!ready) return;
@@ -685,7 +673,6 @@ document.addEventListener("click", (e) => {
     el.focus({ preventScroll: true });
     openPalette(el);
   }
-  if (action === "replay") replayBoot();
 });
 document.addEventListener("keydown", (e) => {
   if (!started) return;

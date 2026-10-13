@@ -637,3 +637,36 @@ input[type="range"] {
 [data-layout="compact"] .detail-content {
   width: calc(47% - var(--edge) + 27px);
 }
+
+/* 竖屏：上下帖子按钮与左右板块按钮缩小并排在同一行 */
+[data-layout="portrait"] .archive-navigation {
+  left: 118px;
+  bottom: 58px;
+  transform: none;
+  gap: 4px;
+}
+[data-layout="portrait"] .archive-navigation > button,
+[data-layout="portrait"] .column-navigation button {
+  width: 34px;
+  height: 34px;
+  font-size: 15px;
+}
+[data-layout="portrait"] .file-ticks button {
+  width: 14px;
+  height: 34px;
+}
+[data-layout="portrait"] .file-ticks button::before {
+  left: 6px;
+  top: 0;
+  height: 34px;
+}
+[data-layout="portrait"] .file-ticks button.selected::before {
+  top: 0;
+  height: 34px;
+}
+[data-layout="portrait"] .column-navigation {
+  gap: 4px;
+}
+[data-layout="portrait"] .column-navigation > div {
+  min-width: 76px;
+}
