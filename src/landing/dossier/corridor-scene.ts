@@ -469,12 +469,15 @@ export class Corridor {
       batch.add(m.plate, new RoundedBoxGeometry(2.72, 0.05, 1.06, 3, 0.018).translate(0, PLATE_Y, zc));
       for (const x of [-0.98, 0.98])
         for (const dz of [-0.34, 0.34]) batch.add(m.dark, hanger.clone().translate(x, (CEIL + PLATE_Y) / 2 + 0.005, zc + dz));
-      const slotZ = zc + 0.36;
-      const slotY = PLATE_Y - 0.025 - 0.035;
-      batch.box(m.slot, 2.36, 0.07, 0.14, 0, slotY, slotZ);
+      // The tube runs down the middle of its shade and sits up inside it with only a thin lip showing,
+      // so it never hides the far edge of the shade and the shade reads as reaching equally past it on both sides.
+      const slotZ = zc;
+      const slotH = 0.05;
+      const slotY = PLATE_Y - 0.025 - 0.012 + slotH / 2;
+      batch.box(m.slot, 2.36, slotH, 0.14, 0, slotY, slotZ);
       for (const side of [-1, 1])
-        for (let i = 0; i < 3; i++) batch.box(m.chrome, 0.012, 0.074, 0.146, side * (1.13 - i * 0.075), slotY, slotZ);
-      leds.add(V(-1.04, slotY - 0.036, slotZ), V(1.04, slotY - 0.036, slotZ), 0.03);
+        for (let i = 0; i < 3; i++) batch.box(m.chrome, 0.012, slotH + 0.004, 0.146, side * (1.13 - i * 0.075), slotY, slotZ);
+      leds.add(V(-1.04, slotY - slotH / 2 - 0.001, slotZ), V(1.04, slotY - slotH / 2 - 0.001, slotZ), 0.03);
       faint.add(V(-1.34, PLATE_Y - 0.024, zc + 0.528), V(1.34, PLATE_Y - 0.024, zc + 0.528), 0.005);
     }
     hanger.dispose();

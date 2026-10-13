@@ -63,18 +63,20 @@ const ENTER = {
 const WIPE_LINE = 30;
 const GHOSTS = ".dz-blurword, .dz-watername, .dz-infoword";
 
-type Slot = { dx: number; dy: number; w: number; h: number; variant: "white" | "black" | "band" | "text" | "accent"; rot: number };
+type Slot = { dx: number; dy: number; px: number; py: number; w: number; h: number; variant: "white" | "black" | "band" | "text" | "accent"; rot: number };
+// dx/dy place a tile on a landscape stage; px/py stack the same tiles above and below the centre tile on a phone held upright.
 const SLOTS: Slot[] = [
-  { dx: -370, dy: 38, w: 190, h: 104, variant: "accent", rot: 0 },
-  { dx: 403, dy: -129, w: 200, h: 198, variant: "band", rot: 2 },
-  { dx: -723, dy: -118, w: 200, h: 192, variant: "white", rot: -1 },
-  { dx: 457, dy: 129, w: 196, h: 192, variant: "white", rot: 0 },
-  { dx: -604, dy: 182, w: 205, h: 202, variant: "black", rot: -4 },
-  { dx: 603, dy: 20, w: 236, h: 100, variant: "text", rot: 0 },
-  { dx: 796, dy: -122, w: 240, h: 152, variant: "white", rot: 0 },
-  { dx: -469, dy: -80, w: 164, h: 158, variant: "white", rot: 1 },
-  { dx: 698, dy: 227, w: 170, h: 170, variant: "black", rot: 0 },
+  { dx: -370, dy: 38, px: -120, py: 300, w: 190, h: 104, variant: "accent", rot: 0 },
+  { dx: 403, dy: -129, px: 170, py: -330, w: 200, h: 198, variant: "band", rot: 2 },
+  { dx: -723, dy: -118, px: -290, py: -300, w: 200, h: 192, variant: "white", rot: -1 },
+  { dx: 457, dy: 129, px: 190, py: 290, w: 196, h: 192, variant: "white", rot: 0 },
+  { dx: -604, dy: 182, px: -270, py: 470, w: 205, h: 202, variant: "black", rot: -4 },
+  { dx: 603, dy: 20, px: -60, py: -480, w: 236, h: 100, variant: "text", rot: 0 },
+  { dx: 796, dy: -122, px: 330, py: 40, w: 240, h: 152, variant: "white", rot: 0 },
+  { dx: -469, dy: -80, px: -320, py: 90, w: 164, h: 158, variant: "white", rot: 1 },
+  { dx: 698, dy: 227, px: 260, py: 485, w: 170, h: 170, variant: "black", rot: 0 },
 ];
+const CLOUD_CENTER = { dx: 3, dy: 23 };
 const SITE_SECTIONS: [string, string][] = [
   ["讨论", "DISCUSSIONS"], ["话题", "TOPICS"], ["收藏", "COLLECTIONS"], ["作者", "CREATORS"],
   ["消息", "MESSAGES"], ["治理", "GOVERNANCE"], ["精选", "FEATURED"], ["检索", "SEARCH"], ["草稿", "DRAFTS"],
@@ -172,6 +174,8 @@ export class Dossier {
     this.corridor = new Corridor(this.q(".dz-corridor"));
     this.root.addEventListener("click", (event) => this.onClick(event), { signal: this.abort.signal });
     this.q(".dz-article").addEventListener("wheel", () => this.pauseAutoplay(), { passive: true, signal: this.abort.signal });
+    this.q(".dz-article").addEventListener("touchstart", () => this.pauseAutoplay(), { passive: true, signal: this.abort.signal });
+    this.listenForSwipes(this.q(".dz-pages"));
     void this.loadThread();
     if (o.reduced) this.skip();
     requestAnimationFrame(() => this.q<HTMLButtonElement>('[data-dz="close"]').focus({ preventScroll: true }));
@@ -179,6 +183,34 @@ export class Dossier {
 
   private q<T extends HTMLElement = HTMLElement>(selector: string) {
     return this.root.querySelector<T>(selector)!;
+  }
+
+  private listenForSwipes(pages: HTMLElement) {
+    const signal = this.abort.signal;
+    let from: { x: number; y: number } | undefined;
+    pages.addEventListener(
+      "touchstart",
+      (event) => {
+        const touch = event.touches[0];
+        from = event.touches.length === 1 ? { x: touch.clientX, y: touch.clientY } : undefined;
+      },
+      { passive: true, signal },
+    );
+    pages.addEventListener(
+      "touchend",
+      (event) => {
+        const start = from;
+        from = undefined;
+        if (!start || this.root.dataset.stage !== "panel") return;
+        const touch = event.changedTouches[0];
+        const dx = touch.clientX - start.x;
+        const dy = touch.clientY - start.y;
+        if (Math.abs(dx) < 56 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+        this.pauseAutoplay();
+        this.goto(this.page + (dx < 0 ? 1 : -1));
+      },
+      { passive: true, signal },
+    );
   }
 
   private markup() {
@@ -226,7 +258,7 @@ ${this.controlsMarkup()}`;
       const long = Array.from(label.name).length;
       const size = slot.variant === "text" || slot.variant === "accent" ? (long > 4 ? 40 : 52) : long > 4 ? 28 : long > 2 ? 36 : 48;
       const from = index % 2 ? 1 : -1;
-      return `<div class="dz-tile dz-tile-${slot.variant}${label.match ? " is-match" : ""}" style="--dx:${slot.dx};--dy:${slot.dy};--w:${slot.w}px;--h:${slot.h}px;--r:${slot.rot}deg;--r0:${from * (18 + index * 3)}deg;--fx:${from * (120 + index * 18)}px;--fy:${(index % 3 - 1) * 90}px;--delay:${(0.95 + index * 0.21).toFixed(2)}s;--label-delay:${(2.2 + index * 0.17).toFixed(2)}s;--float:${(7 + (index % 4) * 1.3).toFixed(1)}s;--fdx:${((index % 3) - 1) * 6}px;--fdy:${index % 2 ? -7 : 6}px">
+      return `<div class="dz-tile dz-tile-${slot.variant}${label.match ? " is-match" : ""}" style="--dx:${slot.dx};--dy:${slot.dy};--px:${slot.px};--py:${slot.py};--w:${slot.w}px;--h:${slot.h}px;--r:${slot.rot}deg;--r0:${from * (18 + index * 3)}deg;--fx:${from * (120 + index * 18)}px;--fy:${(index % 3 - 1) * 90}px;--delay:${(0.95 + index * 0.21).toFixed(2)}s;--label-delay:${(2.2 + index * 0.17).toFixed(2)}s;--float:${(7 + (index % 4) * 1.3).toFixed(1)}s;--fdx:${((index % 3) - 1) * 6}px;--fdy:${index % 2 ? -7 : 6}px">
   <div class="dz-tile-body">
     <div class="dz-tile-label" style="--size:${size}px"><strong>${esc(label.name)}</strong><small>${esc(label.en)}</small></div>
     ${slot.variant === "accent" ? '<i class="dz-accent"></i>' : ""}
@@ -251,7 +283,7 @@ ${this.controlsMarkup()}`;
   <div class="dz-searching"><i></i><span>SEARCHING</span></div>
   ${glints}
   ${bits}
-  <div class="dz-tile dz-tile-center" style="--dx:3;--dy:23;--w:350px;--h:350px;--r:0deg;--r0:-24deg;--fx:-40px;--fy:60px;--delay:0s">
+  <div class="dz-tile dz-tile-center" style="--dx:${CLOUD_CENTER.dx};--dy:${CLOUD_CENTER.dy};--px:0;--py:0;--w:350px;--h:350px;--r:0deg;--r0:-24deg;--fx:-40px;--fy:60px;--delay:0s">
     <div class="dz-tile-body">
       <span class="dz-dot"></span>
       ${nmkMarkSvg({ fill: "#fff", className: "dz-center-mark" })}
@@ -414,9 +446,13 @@ ${this.controlsMarkup()}`;
     const stage = this.o.stage;
     const width = stage.clientWidth || 1920;
     const height = stage.clientHeight || 1080;
-    this.root.style.setProperty("--spread", String(Math.min(1.18, Math.max(0.72, width / 1920))));
+    const spread = Math.min(1.18, Math.max(0.72, width / 1920));
+    this.root.style.setProperty("--spread", String(spread));
     this.root.style.setProperty("--stage-w", `${width}px`);
     const compact = width < 1300 || height < 700;
+    // Phones get their own reflowed layout: shrinking the 1140px desktop panel to fit leaves 4–6px text.
+    const phone = width < 760 || height < 500;
+    const tall = height > width;
     const tileK = Math.min(0.82, Math.max(0.72, 0.72 + ((width - 1400) / 520) * 0.1));
     const note = this.q(".dz-rail-note");
     const tileLeft = Math.max(248, note.offsetLeft + note.offsetWidth + 30);
@@ -429,11 +465,24 @@ ${this.controlsMarkup()}`;
     this.root.style.setProperty("--panel-left", `${panelLeft}px`);
     this.root.style.setProperty("--panel-scale", String(panelScale));
     this.root.dataset.compact = String(compact);
+    this.root.dataset.phone = String(phone);
+    this.root.dataset.tall = String(tall);
+    stage.dataset.dossierPhone = String(phone);
+    const cloudK = !phone ? 1 : tall ? Math.min(width / 620, height / 1200) : Math.min(width / 1900, height / 640);
+    const center = !phone
+      ? { x: CLOUD_CENTER.dx * spread, y: CLOUD_CENTER.dy }
+      : tall
+        ? { x: 0, y: 0 }
+        : { x: CLOUD_CENTER.dx * cloudK, y: CLOUD_CENTER.dy * cloudK };
+    this.root.style.setProperty("--cloud-k", cloudK.toFixed(3));
+    this.root.style.setProperty("--cloud-cx", `${center.x}px`);
+    this.root.style.setProperty("--cloud-cy", `${center.y}px`);
+    const sectionK = tall ? Math.min(0.84, (width - 40) / 422, (height - 400) / 326) : Math.min(0.84, (height - 140) / 326);
+    this.root.style.setProperty("--section-k", Math.max(0.5, sectionK).toFixed(3));
     const svg = this.q<SVGSVGElement & HTMLElement>(".dz-x");
     svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
-    const spread = Math.min(1.18, Math.max(0.72, width / 1920));
-    const cx = width / 2 + 3 * spread, cy = height / 2 + 23;
-    const half = 175;
+    const cx = width / 2 + center.x, cy = height / 2 + center.y;
+    const half = 175 * cloudK;
     const corners: [number, number, number, number][] = [
       [cx - half, cy - half, -1, -1],
       [cx + half, cy - half, 1, -1],
@@ -609,6 +658,10 @@ ${this.controlsMarkup()}`;
   private enterPanel() {
     if (this.o.reduced) return;
     const tile = this.q(".dz-site-tile");
+    if (!tile.offsetWidth) {
+      this.enterPage(this.pageEl(0), ENTER.slabAfterTile);
+      return;
+    }
     const stageW = this.o.stage.clientWidth || 1920;
     const home = tile.offsetLeft;
     const hold = Math.max(0, stageW - tile.offsetWidth - 150 - home);
@@ -660,6 +713,7 @@ ${this.controlsMarkup()}`;
       (el) => !el.classList.contains("dz-slab") && !el.classList.contains("dz-wipe") && el.offsetWidth > 0,
     );
     const half = page.clientWidth / 2;
+    const slideFrom = `${Math.round(Math.min(380, page.clientWidth * 0.35))}px 0`;
     const byTop = (a: HTMLElement, b: HTMLElement) => a.offsetTop - b.offsetTop || a.offsetLeft - b.offsetLeft;
     const ghosts = parts.filter((el) => el.matches(GHOSTS));
     const solid = parts.filter((el) => !el.matches(GHOSTS));
@@ -668,7 +722,7 @@ ${this.controlsMarkup()}`;
     right.forEach((el, i) => {
       const at = (start + i * ENTER.slideStagger) * s;
       animations.push(
-        el.animate([{ translate: "380px 0" }, { translate: "0 0" }], { duration: ENTER.slide * s, delay: at, easing: this.spring, fill: "backwards" }),
+        el.animate([{ translate: slideFrom }, { translate: "0 0" }], { duration: ENTER.slide * s, delay: at, easing: this.spring, fill: "backwards" }),
         el.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 0.3 * s, delay: at, easing: "linear", fill: "backwards" }),
       );
     });
@@ -979,5 +1033,6 @@ ${this.controlsMarkup()}`;
     this.root.remove();
     delete this.o.stage.dataset.dossier;
     delete this.o.stage.dataset.dossierStage;
+    delete this.o.stage.dataset.dossierPhone;
   }
 }
