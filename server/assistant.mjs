@@ -575,8 +575,9 @@ function agentTools(ctx, send, { eager, scheduled = false, allowActions = false 
             send("choices", { id: context?.toolUse.id, question: input.question, options: input.options });
             return waitingForChoice;
           }
+          // tool 让助手按正在做的事换动作（搜索、翻看、阅读、改设置……）。
+          if (action.kind === "read" || action.kind === "write") send("status", { text: action.activity || "", tool: action.name });
           if (action.kind === "read") {
-            if (action.activity) send("status", { text: action.activity });
             return JSON.stringify((await runAction(action, input, ctx)).data);
           }
           if (action.kind === "confirm" && !scheduled) {
