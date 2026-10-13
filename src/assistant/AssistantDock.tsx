@@ -602,10 +602,7 @@ export default function AssistantDock({ userId, shared = null }: { userId: strin
         if (was) flash("waking", 1400);
         return false;
       });
-      timer = window.setTimeout(() => {
-        flash("powering-down", 1800);
-        setAsleep(true);
-      }, 150000);
+      timer = window.setTimeout(() => setAsleep(true), 150000);
     };
     wake();
     const events = ["pointerdown", "keydown", "scroll", "wheel"] as const;
@@ -652,7 +649,7 @@ export default function AssistantDock({ userId, shared = null }: { userId: strin
   const agentKey = chat.agents.join(",");
   const previousAgents = useRef(agentKey);
   useEffect(() => {
-    if (previousAgents.current !== agentKey) flash("spawning", 1800);
+    if (previousAgents.current !== agentKey) flash("surprised", 1600);
     previousAgents.current = agentKey;
   }, [agentKey, flash]);
 
@@ -769,7 +766,7 @@ export default function AssistantDock({ userId, shared = null }: { userId: strin
 
   const seenFiles = useRef(files.length);
   useEffect(() => {
-    if (files.length > seenFiles.current) flash("uploading", 1500);
+    if (files.length > seenFiles.current) flash("approving", 1500);
     seenFiles.current = files.length;
   }, [files.length, flash]);
 

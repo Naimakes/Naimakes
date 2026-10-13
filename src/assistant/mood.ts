@@ -4,11 +4,11 @@ import type { ChatMessage } from "./chat";
 type Weighted = Record<string, number>;
 
 const byHour: [number, number, Weighted][] = [
-  [5, 9, { excited: 3, happy: 3, curious: 2, playful: 1, bouncing: 1 }],
+  [5, 9, { excited: 3, happy: 3, curious: 2, playful: 1 }],
   [9, 12, { curious: 3, proud: 2, happy: 2, listening: 2, surprised: 1 }],
   [12, 14, { shy: 2, bored: 2, drowsy: 1, happy: 2, curious: 1, humming: 1 }],
   [14, 18, { proud: 3, curious: 3, listening: 2, happy: 1, humming: 1, showcase: 0.5 }],
-  [18, 22, { happy: 3, playful: 3, laughing: 2, excited: 1, humming: 2, bouncing: 1 }],
+  [18, 22, { happy: 3, playful: 3, laughing: 2, excited: 1, humming: 2 }],
   [22, 29, { bored: 3, drowsy: 3, shy: 2, listening: 1, scared: 0.5 }],
 ];
 
@@ -69,26 +69,28 @@ export const pickActionReaction = (ok: boolean) => (ok ? draw({ approving: 3, ce
 
 /**
  * 智能体在各种场景下可以摆的姿势。poses[0] 是这个场景的本色，其余的穿插着换，
- * 免得搜索、输出时一直一个样；intro 是场景刚开始时先闪一下的动作。
+ * 免得搜索、输出时一直一个样。同一个场景里的姿势身体大小要一致：要么都是整个身体，
+ * 要么都是缩成小图标的（雷达、三个点、轨道），不在两者之间来回切，否则会忽大忽小。
+ * 也不用「缩成一个点再弹回来」的 spawning、uploading、sending、receiving、progress、loading。
  */
 const scenes = {
-  thinking: { poses: ["thinking", "computing", "orbit", "loading", "curious"], intro: "sending" },
-  attachments: { poses: ["reading", "receiving", "curious", "computing"], intro: "uploading" },
-  coding: { poses: ["coding", "computing", "thinking", "working"], intro: "sending" },
-  searching: { poses: ["searching", "radar", "curious", "thinking"] },
-  browsing: { poses: ["reading", "orbit", "searching", "curious"] },
-  reading: { poses: ["reading", "curious", "thinking", "surprised"] },
-  inbox: { poses: ["receiving", "reading", "alerting", "curious"] },
-  managing: { poses: ["computing", "thinking", "working", "orbit"] },
-  spawning: { poses: ["spawning", "computing", "excited"] },
-  controlling: { poses: ["controlling", "working", "progress"] },
-  composing: { poses: ["writing", "working", "thinking", "streaming"] },
-  answering: { poses: ["streaming", "writing", "thinking", "happy"], intro: "receiving" },
-  running: { poses: ["working", "progress", "running", "controlling"] },
-  waiting: { poses: ["waiting", "listening", "curious"] },
-  notifying: { poses: ["notifying", "alerting", "bouncing"] },
-  dictating: { poses: ["dictating", "listening"] },
-} satisfies Record<string, { poses: string[]; intro?: string }>;
+  thinking: { poses: ["thinking", "orbit"] },
+  attachments: { poses: ["reading", "listening"] },
+  coding: { poses: ["coding", "humming"] },
+  searching: { poses: ["searching", "thinking", "orbit"] },
+  browsing: { poses: ["reading", "curious", "listening"] },
+  reading: { poses: ["reading", "curious", "suspicious"] },
+  inbox: { poses: ["reading", "curious"] },
+  managing: { poses: ["working", "listening", "humming"] },
+  spawning: { poses: ["surprised", "approving"] },
+  controlling: { poses: ["controlling", "listening"] },
+  composing: { poses: ["writing"] },
+  answering: { poses: ["streaming", "humming", "listening"] },
+  running: { poses: ["working", "listening"] },
+  waiting: { poses: ["listening", "shy"] },
+  notifying: { poses: ["notifying"] },
+  dictating: { poses: ["listening", "humming"] },
+} satisfies Record<string, { poses: string[] }>;
 export type Scene = keyof typeof scenes;
 
 const toolScenes: [RegExp, Scene][] = [
@@ -114,30 +116,27 @@ export function useScene(scene: Scene | null, reduced: boolean) {
   const [shown, setShown] = useState<{ scene: Scene | null; pose: string }>({ scene: null, pose: "" });
   useEffect(() => {
     if (!scene) return;
-    const { poses, intro } = scenes[scene] as { poses: string[]; intro?: string };
+    const { poses } = scenes[scene] as { poses: string[] };
     const show = (pose: string) => setShown({ scene, pose });
-    if (reduced) return show(poses[0]);
+    show(poses[0]);
+    if (reduced || poses.length < 2) return;
     let timer = 0;
-    let turn = 0;
+    let turn = 1;
     let last = "";
     const step = () => {
-      const main = turn++ % 2 === 0 || poses.length < 2;
-      const choices = poses.slice(1).filter((pose) => pose !== last);
+      const main = turn++ % 2 === 0;
+      const others = poses.slice(1);
+      const choices = others.length > 1 ? others.filter((pose) => pose !== last) : others;
       const pose = main ? poses[0] : choices[Math.floor(Math.random() * choices.length)];
       if (!main) last = pose;
       show(pose);
       timer = window.setTimeout(step, main ? between(3600, 5600) : between(2000, 3000));
     };
-    if (intro) {
-      show(intro);
-      timer = window.setTimeout(step, 1100);
-    } else step();
+    timer = window.setTimeout(step, between(3600, 5600));
     return () => clearTimeout(timer);
   }, [scene, reduced]);
   if (!scene) return null;
-  if (shown.scene === scene) return shown.pose;
-  const { poses, intro } = scenes[scene] as { poses: string[]; intro?: string };
-  return reduced ? poses[0] : intro || poses[0];
+  return shown.scene === scene ? shown.pose : scenes[scene].poses[0];
 }
 
 const postWords = /(发帖|发布|发表|写(一|个|篇|份)*(帖|讨论|文章|稿)|起草|草稿|帮我写|润色|拟一|撰写)/;
