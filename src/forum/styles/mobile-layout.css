@@ -717,3 +717,34 @@
 @media (hover: hover) and (pointer: fine) {
   :root:root .post-footer > .post-stats > button.glass-btn:not(:disabled):hover { background: transparent; color: var(--glass-text); }
 }
+
+/* 设置页：所有液态玻璃底板（设置行、订阅卡、各个分区）统一间距，互不重叠 */
+:root:root .profile-page .profile-grid,
+:root:root .notify-settings-modal .profile-grid {
+  gap: 14px 18px;
+}
+:root:root .profile-page .profile-setting,
+:root:root .notify-settings-modal .profile-setting {
+  margin: 0;
+  padding: 16px 20px;
+  border-bottom: 0;
+}
+:root:root .profile-page .notify-subscriptions,
+:root:root .notify-settings-modal .notify-subscriptions {
+  gap: 14px;
+}
+:root:root .profile-page .profile-card > .profile-grid,
+:root:root .profile-page .notify-subscriptions {
+  margin-top: 18px;
+}
+:root:root .profile-page .profile-body,
+:root:root .profile-page .settings-body {
+  gap: 24px;
+}
+@media (max-width: 900px) {
+  :root:root .profile-page .profile-grid,
+  :root:root .notify-settings-modal .profile-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 14px;
+  }
+}
