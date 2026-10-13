@@ -1833,10 +1833,10 @@ const Rw = [
 
 /* ---- State table `zu`, state machine `zw`, per-body eye layout (Hw/Vw), path builder `sn`, all 25 body definitions (`Pb`/`_b`), silhouettes, 3D extrusion/hull/projection code, proof renderer `Xx`, sprite renderer `ov/iv/av` (original lines 4258-7706) ---- */
 const Ow = 120,
+  // Working_B 是引擎里唯一会把身体缩小到约 2/3 再放大回来的片段，这里不用它，免得「干活」时忽大忽小。
   Pn = {
     clips: [
       "Working_A",
-      "Working_B",
       "Working_C",
       "Working_D",
       "Working_E",
@@ -1873,7 +1873,7 @@ const Ow = 120,
     excited: { clips: ["Done_C"] },
     laughing: { clips: ["Done_B"] },
     proud: { clips: ["Marketing_B"] },
-    curious: { clips: ["Working_B"], face: "inspecting" },
+    curious: { clips: ["Working_C"], face: "inspecting" },
     playful: { clips: ["Bodymoves_A"] },
     shy: { clips: ["Idle_D"], face: "calm" },
     surprised: { clips: ["Idle_B"], face: "surprised" },

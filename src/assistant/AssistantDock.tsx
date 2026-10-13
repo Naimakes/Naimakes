@@ -453,6 +453,8 @@ export default function AssistantDock({ userId, shared = null }: { userId: strin
   const [box, setBox] = useState<Box | null>(null);
   const [mood, setMood] = useState("idle");
   const [asleep, setAsleep] = useState(false);
+  const [roaming, setRoaming] = useState(false);
+  const [roamTurn, setRoamTurn] = useState(0);
   const [dragging, setDragging] = useState(false);
   const [pressing, setPressing] = useState(false);
   const [draft, setDraft] = useState("");
@@ -479,6 +481,8 @@ export default function AssistantDock({ userId, shared = null }: { userId: strin
   const frame = useRef(0);
   const last = useRef(0);
   const settleTo = useRef<Vec | null>(null);
+  // 闲着时从屏幕一边慢慢跑到另一边：按时间走一条缓入缓出的路，不走拖拽用的弹簧。
+  const glide = useRef<{ from: Vec; to: Vec; start: number; dur: number } | null>(null);
   const suppressClick = useRef(false);
   const openRef = useRef(open);
   const viewRef = useRef(view);
@@ -520,12 +524,37 @@ export default function AssistantDock({ userId, shared = null }: { userId: strin
     const y = saved ? saved.y * window.innerHeight : bounds.maxY - 8;
     pos.current = { x: clampTo(x, bounds.minX, bounds.maxX), y: clampTo(y, bounds.minY, bounds.maxY) };
     vel.current = { x: 0, y: 0 };
+    if (glide.current) {
+      glide.current = null;
+      setRoaming(false);
+      setRoamTurn((n) => n + 1);
+    }
     paint();
   }, [size, paint]);
 
   const tick = useCallback((now: number) => {
     const dt = Math.min(0.032, (now - (last.current || now)) / 1000) || 1 / 60;
     last.current = now;
+    const run = glide.current;
+    if (run && !target.current) {
+      if (!run.start) run.start = now;
+      const t = Math.min(1, (now - run.start) / run.dur);
+      const eased = t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+      const slope = ((t < 0.5 ? 12 * t * t : 3 * Math.pow(-2 * t + 2, 2)) * 1000) / run.dur;
+      pos.current = { x: run.from.x + (run.to.x - run.from.x) * eased, y: run.from.y + (run.to.y - run.from.y) * eased };
+      vel.current = t < 1 ? { x: (run.to.x - run.from.x) * slope, y: (run.to.y - run.from.y) * slope } : { x: 0, y: 0 };
+      paint();
+      if (t < 1) {
+        frame.current = requestAnimationFrame(tick);
+        return;
+      }
+      glide.current = null;
+      frame.current = 0;
+      last.current = 0;
+      setRoaming(false);
+      setRoamTurn((n) => n + 1);
+      return;
+    }
     const goal = target.current || settleTo.current;
     if (!goal) {
       frame.current = 0;
@@ -602,10 +631,7 @@ export default function AssistantDock({ userId, shared = null }: { userId: strin
         if (was) flash("waking", 1400);
         return false;
       });
-      timer = window.setTimeout(() => {
-        flash("powering-down", 1800);
-        setAsleep(true);
-      }, 150000);
+      timer = window.setTimeout(() => setAsleep(true), 150000);
     };
     wake();
     const events = ["pointerdown", "keydown", "scroll", "wheel"] as const;
@@ -616,15 +642,49 @@ export default function AssistantDock({ userId, shared = null }: { userId: strin
     };
   }, [open, flash]);
 
-  const calm = !dragging && chat.phase === "idle" && mood === "idle" && !settled && !asleep;
+  const calm = !dragging && !roaming && chat.phase === "idle" && mood === "idle" && !settled && !asleep;
   useEffect(() => {
     if (!calm || reduced) return;
     const timer = window.setTimeout(
       () => flash(pickMood(new Date(), taskDifficulty(chat.messages)), between(3200, 5400)),
-      between(8000, 20000),
+      between(25000, 60000),
     );
     return () => clearTimeout(timer);
   }, [calm, reduced, chat.messages, flash]);
+
+  // 偶尔从屏幕的一边慢慢跑到另一边，到了就停在那里，不改记住的位置（刷新后回到自己放的地方）。
+  const roamBusy = open || dragging || pressing || chat.phase !== "idle";
+  useEffect(() => {
+    if (roamBusy && glide.current) {
+      glide.current = null;
+      setRoaming(false);
+      setRoamTurn((n) => n + 1);
+    }
+  }, [roamBusy]);
+  // 表情、回答结果这些常常在变，不能让它们重置计时：到点了再看现在能不能跑，不能就过一会儿再看。
+  const roamReady = useRef(false);
+  roamReady.current = !roamBusy && !asleep && !reduced && mood === "idle" && !settled;
+  useEffect(() => {
+    if (reduced) return;
+    let timer = 0;
+    const arm = (delay: number) => {
+      timer = window.setTimeout(() => {
+        const bounds = viewportBounds(size);
+        const from = { ...pos.current };
+        if (!roamReady.current || document.hidden || ball.current?.matches(":hover") || bounds.maxX - bounds.minX < 240) return arm(8000);
+        const to = {
+          x: from.x < (bounds.minX + bounds.maxX) / 2 ? bounds.maxX : bounds.minX,
+          y: clampTo(from.y + between(-90, 90), bounds.minY, bounds.maxY),
+        };
+        glide.current = { from, to, start: 0, dur: Math.min(4600, Math.max(2400, Math.hypot(to.x - from.x, to.y - from.y) * 3.4)) };
+        settleTo.current = null;
+        setRoaming(true);
+        animate();
+      }, delay);
+    };
+    arm(between(40000, 90000));
+    return () => clearTimeout(timer);
+  }, [reduced, roamTurn, animate]);
 
   const previousPhase = useRef(chat.phase);
   useEffect(() => {
@@ -652,7 +712,7 @@ export default function AssistantDock({ userId, shared = null }: { userId: strin
   const agentKey = chat.agents.join(",");
   const previousAgents = useRef(agentKey);
   useEffect(() => {
-    if (previousAgents.current !== agentKey) flash("spawning", 1800);
+    if (previousAgents.current !== agentKey) flash("surprised", 1600);
     previousAgents.current = agentKey;
   }, [agentKey, flash]);
 
@@ -769,7 +829,7 @@ export default function AssistantDock({ userId, shared = null }: { userId: strin
 
   const seenFiles = useRef(files.length);
   useEffect(() => {
-    if (files.length > seenFiles.current) flash("uploading", 1500);
+    if (files.length > seenFiles.current) flash("approving", 1500);
     seenFiles.current = files.length;
   }, [files.length, flash]);
 
@@ -898,6 +958,11 @@ export default function AssistantDock({ userId, shared = null }: { userId: strin
     if (!delta) return;
     event.preventDefault();
     const bounds = viewportBounds(size);
+    if (glide.current) {
+      glide.current = null;
+      setRoaming(false);
+      setRoamTurn((n) => n + 1);
+    }
     const goal = { x: clampTo(pos.current.x + delta[0], bounds.minX, bounds.maxX), y: clampTo(pos.current.y + delta[1], bounds.minY, bounds.maxY) };
     if (reduced) {
       pos.current = goal;
@@ -1051,7 +1116,9 @@ export default function AssistantDock({ userId, shared = null }: { userId: strin
     ? "dragging"
     : posed
       ? posed
-      : mood !== "idle"
+      : roaming
+        ? "humming"
+        : mood !== "idle"
         ? mood
         : settled
           ? settledPose
@@ -1172,7 +1239,7 @@ export default function AssistantDock({ userId, shared = null }: { userId: strin
             open ? closePanel() : openPanel();
           }}
         >
-          <BotFigure look={ballLook} state={agentState} paused={open} follow={false} fps={30} className="assistant-ball-bot" />
+          <BotFigure look={ballLook} state={agentState} paused={open} follow={false} fps={24} idle="alive" className="assistant-ball-bot" />
           {unread && !open && <span className="assistant-ball-badge" aria-hidden="true" />}
         </button>
       </div>
@@ -1211,7 +1278,7 @@ export default function AssistantDock({ userId, shared = null }: { userId: strin
                     <AgentCluster agents={chatAgents} size={40} />
                   ) : (
                     <span className="assistant-identity-avatar">
-                      <BotFigure look={chatLook} state={headState} fps={30} follow={false} />
+                      <BotFigure look={chatLook} state={headState} fps={24} follow={false} idle="alive" />
                     </span>
                   )}
                   <span className="assistant-identity-text">
