@@ -11,6 +11,7 @@ import { installTasks, nextRun, syncTaskZone, validZone } from "./assistant-task
 import { notify } from "./notifications.mjs";
 import { BUILTIN_AGENT, MAX_GROUP, agentFor, cleanAgentIds, installAgents } from "./assistant-agents.mjs";
 import { webSearch } from "./web-search.mjs";
+import { CompatError, createCompatClient } from "./openai-compat.mjs";
 
 db.exec(`
 CREATE TABLE IF NOT EXISTS assistant_chats (
@@ -670,21 +671,24 @@ const clockText = (tz) =>
 
 export function installAssistant(app, { auth, liveClause, fileLibrary, sessions }) {
   const index = createIndex(liveClause);
-  // DeepSeek serves the same Messages API at its own address; a DeepSeek key wins over a Claude one.
-  const deepseek = !!process.env.DEEPSEEK_API_KEY;
-  const apiKey = process.env.DEEPSEEK_API_KEY || process.env.ANTHROPIC_API_KEY || process.env.ANTHROPIC_AUTH_TOKEN;
-  const client = !apiKey
-    ? null
-    : deepseek
-      ? new Anthropic({
-          apiKey,
-          authToken: null,
-          baseURL: process.env.DEEPSEEK_BASE_URL || "https://api.deepseek.com/anthropic",
-          maxRetries: 1,
-          timeout: 120000,
-        })
-      : new Anthropic({ maxRetries: 1, timeout: 120000 });
-  const model = process.env.ASSISTANT_MODEL || (deepseek ? "deepseek-flash" : "claude-opus-5-5");
+  // 接哪一家：DEEPSEEK_API_KEY 优先，其次 OPENAI_API_KEY（任何 OpenAI 兼容接口），最后是 Claude。
+  // DeepSeek 默认走它原生的 OpenAI 兼容接口；ASSISTANT_API=anthropic 时改走它的 Anthropic 兼容接口。
+  const deepseekKey = process.env.DEEPSEEK_API_KEY;
+  const openaiKey = process.env.OPENAI_API_KEY;
+  const claudeKey = process.env.ANTHROPIC_API_KEY || process.env.ANTHROPIC_AUTH_TOKEN;
+  const deepseek = !!deepseekKey;
+  const compat = deepseek ? process.env.ASSISTANT_API !== "anthropic" : !!openaiKey;
+  const claude = !deepseek && !compat && !!claudeKey;
+  const model = process.env.ASSISTANT_MODEL || (deepseek ? "deepseek-flash" : claude ? "claude-opus-5-5" : "");
+  const reasoning = process.env.OPENAI_REASONING !== "off";
+  let client = null;
+  if (compat && !model) console.error("Assistant disabled: OPENAI_API_KEY is set but ASSISTANT_MODEL is empty. Set ASSISTANT_MODEL to the model name of your OpenAI-compatible service.");
+  else if (compat && deepseek)
+    client = createCompatClient({ apiKey: deepseekKey, baseURL: (process.env.DEEPSEEK_BASE_URL || "https://api.deepseek.com").replace(/\/anthropic\/?$/, ""), dialect: "deepseek", reasoning });
+  else if (compat) client = createCompatClient({ apiKey: openaiKey, baseURL: process.env.OPENAI_BASE_URL || "https://api.openai.com/v1", reasoning });
+  else if (deepseek)
+    client = new Anthropic({ apiKey: deepseekKey, authToken: null, baseURL: process.env.DEEPSEEK_BASE_URL || "https://api.deepseek.com/anthropic", maxRetries: 1, timeout: 120000 });
+  else if (claude) client = new Anthropic({ maxRetries: 1, timeout: 120000 });
   const effort = ["low", "medium", "high", "xhigh", "max"].includes(process.env.ASSISTANT_EFFORT)
     ? process.env.ASSISTANT_EFFORT
     : "low";
@@ -699,7 +703,8 @@ export function installAssistant(app, { auth, liveClause, fileLibrary, sessions 
 
   installMemory(app, { auth });
 
-  const learnModel = process.env.ASSISTANT_TITLE_MODEL || (deepseek ? "deepseek-flash" : "claude-haiku-5-5");
+  const lightModel = process.env.ASSISTANT_TITLE_MODEL || (deepseek ? "deepseek-flash" : claude ? "claude-haiku-5-5" : model);
+  const learnModel = lightModel;
   // 对话结束后，从用户这一轮说的话里整理出长期有效的要求或信息，存进记忆。只看用户自己的话，不看助手回答和附件。
   async function learn(userId, question) {
     if (!client || !userId || !question.trim() || !autoEnabled(userId)) return;
@@ -727,6 +732,7 @@ export function installAssistant(app, { auth, liveClause, fileLibrary, sessions 
 
   // Runs the model (and its tools) to the end, handing every piece of answer text to `onText`.
   async function drive(params, signal, onText, closed = () => false) {
+    if (compat) return client.run(params, signal, onText);
     let runner = client.beta.messages.toolRunner(params, { signal });
     let final = null;
     let wrote = false;
@@ -796,7 +802,7 @@ export function installAssistant(app, { auth, liveClause, fileLibrary, sessions 
       const params = {
         model,
         max_tokens: 8000,
-        ...(deepseek ? {} : { betas: ["server-side-fallback-2026-07-01"], fallbacks: "default" }),
+        ...(claude ? { betas: ["server-side-fallback-2026-07-01"], fallbacks: "default" } : {}),
         output_config: { effort },
         system: [{ type: "text", text: systemFor({ agent: taskAgent }) + scheduledNote }],
         tools: agentTools(ctx, (event, data) => event === "action" && data.status && done.push(data), { eager: false, scheduled: true, allowActions: !!task.allow_actions }),
@@ -1087,7 +1093,7 @@ export function installAssistant(app, { auth, liveClause, fileLibrary, sessions 
     res.json({ ok: true });
   });
 
-  const titleModel = process.env.ASSISTANT_TITLE_MODEL || (deepseek ? "deepseek-flash" : "claude-haiku-5-5");
+  const titleModel = lightModel;
   app.post("/api/assistant/title", chatLimiter, express.json({ limit: "64kb" }), async (req, res) => {
     const clip = (v) => (typeof v === "string" ? v.trim().slice(0, 600) : "");
     const question = clip(req.body?.question);
@@ -1261,10 +1267,10 @@ export function installAssistant(app, { auth, liveClause, fileLibrary, sessions 
     const params = {
       model,
       max_tokens: 16000,
-      ...(deepseek ? {} : { betas: ["server-side-fallback-2026-07-01"], fallbacks: "default" }),
+      ...(claude ? { betas: ["server-side-fallback-2026-07-01"], fallbacks: "default" } : {}),
       output_config: { effort: Object.hasOwn(thinkingEfforts, req.body?.thinking) ? thinkingEfforts[req.body.thinking] : effort },
       system: [{ type: "text", text: systemFor({ agent, group, bootstrap }), cache_control: { type: "ephemeral" } }],
-      tools: agentTools({ call: memberApi(req, app), user: req.user ? { id: req.user.id, name: req.user.name } : null, tz, agent: agentId, cite }, send, { eager: !deepseek }),
+      tools: agentTools({ call: memberApi(req, app), user: req.user ? { id: req.user.id, name: req.user.name } : null, tz, agent: agentId, cite }, send, { eager: claude }),
       messages: payload,
       stream: true,
       max_iterations: 12,
@@ -1285,7 +1291,13 @@ export function installAssistant(app, { auth, liveClause, fileLibrary, sessions 
     } catch (error) {
       if (closed) return;
       let message = "AI 服务暂时不可用，请稍后再试。";
-      if (error instanceof Anthropic.RateLimitError) message = "AI 服务有点忙，请稍后再试。";
+      if (error instanceof CompatError) {
+        if (error.status === 429) message = "AI 服务有点忙，请稍后再试。";
+        else if (error.status === 401 || error.status === 403) message = "AI 服务配置有误，请联系站主。";
+        else if (!error.status) message = "暂时连不上 AI 服务，请检查网络后重试。";
+        else if (error.status === 400 && blocks.length) message = "当前的 AI 服务可能不支持阅读图片或 PDF，可以换成文本文件，或者去掉附件再试。";
+        console.error("Assistant API error:", error.status, error.message);
+      } else if (error instanceof Anthropic.RateLimitError) message = "AI 服务有点忙，请稍后再试。";
       else if (error instanceof Anthropic.AuthenticationError || error instanceof Anthropic.PermissionDeniedError) {
         message = "AI 服务配置有误，请联系站主。";
         console.error("Assistant API credentials rejected:", error.message);

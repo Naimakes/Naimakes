@@ -7,7 +7,7 @@ Naimakes 论坛 —— 一个讨论人工智能、太空探索、生命科学与
 
 - **前端**：React 19 + TypeScript + Vite，富文本编辑使用 TipTap，动效使用 Motion，3D 部分使用 three.js
 - **后端**：Node.js（≥ 24）+ Express 5，内置限流（express-rate-limit）与安全头（helmet）
-- **AI 助手**：通过 `@anthropic-ai/sdk` 调用 Claude，或经 Anthropic 兼容接口调用 DeepSeek（可选，需配置 `ANTHROPIC_API_KEY` 或 `DEEPSEEK_API_KEY`）
+- **AI 助手**：DeepSeek 及其他 OpenAI 兼容接口（OpenAI、通义千问、Kimi 等）走 `/chat/completions`；Claude 通过 `@anthropic-ai/sdk` 调用（可选，需配置 `DEEPSEEK_API_KEY`、`OPENAI_API_KEY` 或 `ANTHROPIC_API_KEY`）
 - **部署**：Docker 多阶段构建 + Caddy 反向代理（自动 HTTPS）
 
 ## 目录结构
@@ -59,10 +59,14 @@ npm start                # 启动 API 服务（同时托管 dist/）
 | `SEED_DEMO` | 是否写入演示数据，生产环境保持 `false` |
 | `PORT` / `HOST` | API 监听端口与地址 |
 | `DATA_DIR` | 数据目录 |
-| `DEEPSEEK_API_KEY` | 使用 DeepSeek（默认模型 `deepseek-flash`）时填写，优先于 `ANTHROPIC_API_KEY` |
-| `ANTHROPIC_API_KEY` | 使用 Claude 时填写；与 `DEEPSEEK_API_KEY` 都留空则不启用 AI 助手 |
-| `ASSISTANT_MODEL` / `ASSISTANT_EFFORT` | 助手使用的模型，以及未选择思考模式时的默认推理强度（DeepSeek V4.1 Flash 填 `deepseek-flash`） |
-| `ASSISTANT_TITLE_MODEL` | 生成对话标题的轻量模型，留空时 DeepSeek 用 `deepseek-flash`、Claude 用 `claude-haiku-5-5` |
+| `DEEPSEEK_API_KEY` | 使用 DeepSeek（默认模型 `deepseek-flash`）时填写，优先级最高；默认走 DeepSeek 原生的 OpenAI 兼容接口 |
+| `ASSISTANT_API` | 填 `anthropic` 时 DeepSeek 改走它的 Anthropic 兼容接口（旧的接法）；留空即可 |
+| `DEEPSEEK_BASE_URL` | DeepSeek 接口地址，一般留空（原生接口默认 `https://api.deepseek.com`） |
+| `OPENAI_API_KEY` / `OPENAI_BASE_URL` | 使用其他 OpenAI 兼容接口时填写，见下文「接入 OpenAI 兼容接口」；地址默认 `https://api.openai.com/v1` |
+| `OPENAI_REASONING` | 模型不支持 `reasoning_effort` 参数时填 `off` |
+| `ANTHROPIC_API_KEY` | 使用 Claude 时填写；以上几个 Key 都留空则不启用 AI 助手 |
+| `ASSISTANT_MODEL` / `ASSISTANT_EFFORT` | 助手使用的模型，以及未选择思考模式时的默认推理强度（DeepSeek V4.1 Flash 填 `deepseek-flash`；用 `OPENAI_API_KEY` 时必填） |
+| `ASSISTANT_TITLE_MODEL` | 生成对话标题、整理记忆的轻量模型，留空时 DeepSeek 用 `deepseek-flash`、Claude 用 `claude-haiku-5-5`、其他 OpenAI 兼容接口用 `ASSISTANT_MODEL` |
 | `ASSISTANT_RATE_LIMIT` / `ASSISTANT_DAILY_LIMIT` | 助手的频率与每日用量限制 |
 | `WEB_SEARCH_PROVIDER` / `WEB_SEARCH_API_KEY` / `WEB_SEARCH_URL` | 助手的联网搜索，见下文「AI 助手的联网搜索」；都留空则不开启 |
 | `WEB_SEARCH_PER_ANSWER` | 每次回答最多联网搜索几次，默认 5 |
@@ -80,6 +84,25 @@ npm start                # 启动 API 服务（同时托管 dist/）
 4. 部署前可运行 `npm run check:deploy` 检查配置。
 
 数据与备份分别保存在 `forum_data` 与 `forum_backups` 卷中。
+
+## 接入 OpenAI 兼容接口
+
+助手支持两种接口格式：OpenAI 兼容的 `/chat/completions`，以及 Claude 的 Messages API。按下面的顺序取第一个配置了的：
+
+1. **DeepSeek**（`DEEPSEEK_API_KEY`）：默认走 DeepSeek 原生的 OpenAI 兼容接口 `https://api.deepseek.com`。思考强度通过 `reasoning_effort` 传给 DeepSeek，带工具调用时会按 DeepSeek 的要求把 `reasoning_content` 传回。
+2. **其他 OpenAI 兼容接口**（`OPENAI_API_KEY` + `OPENAI_BASE_URL` + `ASSISTANT_MODEL`）：例如
+
+   | 服务 | `OPENAI_BASE_URL` | `ASSISTANT_MODEL` 示例 |
+   | --- | --- | --- |
+   | OpenAI | 留空 | 你账号可用的模型名 |
+   | 通义千问（百炼） | `https://dashscope.aliyuncs.com/compatible-mode/v1` | `qwen-max` |
+   | Kimi（Moonshot） | `https://api.moonshot.cn/v1` | 控制台里的模型名 |
+   | 本地 vLLM / Ollama | `http://127.0.0.1:11434/v1` | 本地模型名 |
+
+   模型需要支持函数调用（tools），否则助手无法执行站内操作和联网搜索。模型不接受 `reasoning_effort` 参数时设置 `OPENAI_REASONING=off`。
+3. **Claude**（`ANTHROPIC_API_KEY`）。
+
+图片和 PDF 附件会按 OpenAI 格式发送（`image_url`、`file`）；所用模型不支持时，助手会提示换成文本文件。
 
 ## AI 助手的思考模式
 
