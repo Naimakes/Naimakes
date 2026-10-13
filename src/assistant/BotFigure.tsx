@@ -2,12 +2,18 @@ import { forwardRef, useEffect, useImperativeHandle, useRef, useState, type Poin
 import type { MarkInstance, PokeKind } from "./engine/grok-bot-mark";
 import { loadEngine } from "./engine-loader";
 import type { AssistantPrefs } from "./prefs";
+import "./bot-motion.css";
 
 export type BotLook = Pick<AssistantPrefs, "shape" | "color">;
 export type BotHandle = { poke: (kind?: PokeKind) => void; blink: () => void };
 
+const between = (min: number, max: number) => min + Math.random() * (max - min);
 const pokeCycle: PokeKind[] = ["spin", "bounce", "nod"];
 const IDLE_PAUSE_MS = 1400;
+// 时不时冒出来的小动作：前几个是外层的身体动作（bot-motion.css），后三个是引擎自带的戳一下。
+const fidgets = ["hop", "wiggle", "peek-left", "peek-right", "pop", "stretch", "shrink", "spin", "bounce", "nod"] as const;
+const FIDGET_MS = 1400;
+const quiet = new Set(["sleeping", "dragging", "powering-down", "blocked"]);
 
 type Props = {
   look: BotLook;
@@ -18,12 +24,13 @@ type Props = {
   fps?: number;
   idle?: "pause" | "alive";
   clickPoke?: boolean;
+  fidget?: boolean;
   className?: string;
   label?: string;
 };
 
 export const BotFigure = forwardRef<BotHandle, Props>(function BotFigure(
-  { look, state = "idle", paused = false, emphasis = false, follow = true, fps = 60, idle = "pause", clickPoke = false, className = "", label },
+  { look, state = "idle", paused = false, emphasis = false, follow = true, fps = 60, idle = "pause", clickPoke = false, fidget = true, className = "", label },
   handle,
 ) {
   const host = useRef<HTMLSpanElement>(null);
@@ -124,6 +131,39 @@ export const BotFigure = forwardRef<BotHandle, Props>(function BotFigure(
     return () => clearTimeout(timer);
   }, [state]);
 
+  // 隔几秒随机做一个小动作，跳一下、扭一扭、探个头，免得一直站着不动。
+  const hush = quiet.has(state);
+  const restingRef = useRef(resting);
+  restingRef.current = resting;
+  useEffect(() => {
+    if (!fidget || paused || hush) return;
+    let timer = 0;
+    let clear = 0;
+    const plan = () => {
+      timer = window.setTimeout(() => {
+        const element = host.current;
+        const still = matchMedia("(prefers-reduced-motion: reduce)").matches || document.documentElement.dataset.motion === "reduced";
+        if (element && !still && !document.hidden) {
+          // 引擎休息时（闲着的头像会暂停省电）只用外层动作，不去叫醒它。
+          const pool = restingRef.current ? fidgets.slice(0, 7) : fidgets;
+          const move = pool[Math.floor(Math.random() * pool.length)];
+          if (move === "spin" || move === "bounce" || move === "nod") poke(move);
+          else {
+            element.dataset.fidget = move;
+            clear = window.setTimeout(() => delete element.dataset.fidget, FIDGET_MS);
+          }
+        }
+        plan();
+      }, between(5000, 12000));
+    };
+    plan();
+    return () => {
+      clearTimeout(timer);
+      clearTimeout(clear);
+      if (host.current) delete host.current.dataset.fidget;
+    };
+  }, [fidget, paused, hush]);
+
   const onPointerUp = (event: ReactPointerEvent<HTMLSpanElement>) => {
     if (clickPoke && event.button === 0) poke();
   };
@@ -132,6 +172,8 @@ export const BotFigure = forwardRef<BotHandle, Props>(function BotFigure(
     <span
       ref={host}
       className={"bot-figure " + className}
+      data-state={state}
+      data-still={paused || undefined}
       data-poke={clickPoke || undefined}
       onPointerUp={clickPoke ? onPointerUp : undefined}
     />

@@ -44,10 +44,6 @@
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
   transition: transform .3s var(--assistant-ease);
-  box-shadow:
-    inset 1px 1px 1px rgb(255 255 255 / .95),
-    inset 0 -18px 30px -18px rgb(0 0 0 / .2),
-    0 18px 38px -22px rgb(0 0 0 / .42);
 }
 .assistant-hero-avatar:active { transform: scale(.97); }
 .assistant-hero-avatar:focus-visible {
@@ -79,7 +75,7 @@
   gap: 16px;
   padding: 16px;
 }
-.assistant-hero-avatar .bot-figure { display: block; width: 74%; height: 74%; }
+.assistant-hero-avatar .bot-figure { width: 92%; height: 92%; filter: drop-shadow(0 10px 12px rgb(0 0 0 / .2)); }
 .assistant-hero-text {
   display: flex;
   flex-direction: column;

@@ -1151,7 +1151,6 @@ export default function AssistantDock({ userId, shared = null }: { userId: strin
             open ? closePanel() : openPanel();
           }}
         >
-          <span className="assistant-ball-sheen" aria-hidden="true" />
           <BotFigure look={ballLook} state={agentState} paused={open} follow={false} fps={30} className="assistant-ball-bot" />
           {unread && !open && <span className="assistant-ball-badge" aria-hidden="true" />}
         </button>
