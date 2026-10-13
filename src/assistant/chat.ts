@@ -530,6 +530,7 @@ async function converse(turn: Turn, page: Page, abort: AbortController) {
         messages: [...history, { role: "user", content: text }],
         page,
         thinking: getPrefs().thinking,
+        webSearch: getPrefs().webSearch,
         tz: Intl.DateTimeFormat().resolvedOptions().timeZone,
         agent: turn.agent,
         ...(turn.group ? { group: turn.group } : {}),
@@ -564,6 +565,8 @@ async function converse(turn: Turn, page: Page, abort: AbortController) {
         }
         const data = JSON.parse(raw);
         if (event === "sources") patchLast((m) => ({ ...m, sources: data as Source[] }));
+        else if (event === "web_sources")
+          patchLast((m) => ({ ...m, sources: [...(m.sources || []).filter((s) => s.type !== "web"), ...(data as Source[])] }));
         else if (event === "files") {
           // The server has filed the upload in the library; remember which entry it is so it can be sent by reference later.
           const ids = data as { id: string | null }[];

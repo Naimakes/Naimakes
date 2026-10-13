@@ -53,6 +53,7 @@ export function sanitizePrefs(input) {
   if (shapes.includes(input.shape)) out.shape = input.shape;
   if (colors.includes(input.color)) out.color = input.color;
   if (Object.hasOwn(thinkingEfforts, input.thinking)) out.thinking = input.thinking;
+  if (typeof input.webSearch === "boolean") out.webSearch = input.webSearch;
   return out;
 }
 
@@ -394,7 +395,7 @@ function sanitizeSources(list) {
   const text = (v, n) => (typeof v === "string" ? v.slice(0, n) : "");
   const out = list
     .filter((s) => s && typeof s === "object")
-    .slice(0, 8)
+    .slice(0, 14)
     .map((s) => ({ type: text(s.type, 20), id: text(s.id, 80), title: text(s.title, 200), url: text(s.url, 300), board: text(s.board, 80), excerpt: text(s.excerpt, 300) }));
   return out.length ? out : undefined;
 }
@@ -709,7 +710,7 @@ export function installAssistant(app, { auth, liveClause, fileLibrary, sessions 
   }
 
   // Runs the model (and its tools) to the end, handing every piece of answer text to `onText`.
-  async function drive(params, signal, onText, closed = () => false) {
+  async function drive(params, signal, onText, closed = () => false, onBlock = () => {}) {
     let runner = client.beta.messages.toolRunner(params, { signal });
     let final = null;
     let wrote = false;
@@ -719,6 +720,7 @@ export function installAssistant(app, { auth, liveClause, fileLibrary, sessions 
         for await (const stream of runner) {
           let gap = wrote;
           for await (const event of stream) {
+            if (event.type === "content_block_start") onBlock(event.content_block);
             if (event.type !== "content_block_delta" || event.delta.type !== "text_delta") continue;
             onText((gap ? "\n\n" : "") + event.delta.text);
             gap = false;
@@ -1231,13 +1233,19 @@ export function installAssistant(app, { auth, liveClause, fileLibrary, sessions 
     const blocks = [...images, ...documents];
     const payload = messages.slice(0, -1).concat({ role: "user", content: blocks.length ? [...blocks, { type: "text", text }] : text });
 
+    const webSearch = req.body?.webSearch === true && !deepseek && !bootstrap;
+    const webSources = [];
     const params = {
       model,
       max_tokens: 16000,
       ...(deepseek ? {} : { betas: ["server-side-fallback-2026-07-01"], fallbacks: "default" }),
       output_config: { effort: Object.hasOwn(thinkingEfforts, req.body?.thinking) ? thinkingEfforts[req.body.thinking] : effort },
       system: [{ type: "text", text: systemFor({ agent, group, bootstrap }), cache_control: { type: "ephemeral" } }],
-      tools: agentTools({ call: memberApi(req, app), user: req.user ? { id: req.user.id, name: req.user.name } : null, tz, agent: agentId }, send, { eager: !deepseek }),
+      tools: [
+        ...agentTools({ call: memberApi(req, app), user: req.user ? { id: req.user.id, name: req.user.name } : null, tz, agent: agentId }, send, { eager: !deepseek }),
+        // 联网搜索由 Claude 的服务端搜索工具完成；DeepSeek 没有这个工具，开关对它不生效。
+        ...(webSearch ? [{ type: "web_search_20250305", name: "web_search", max_uses: 5 }] : []),
+      ],
       messages: payload,
       stream: true,
       max_iterations: 12,
@@ -1249,7 +1257,20 @@ export function installAssistant(app, { auth, liveClause, fileLibrary, sessions 
     });
     try {
       // 选择卡片弹出后这一轮就等用户回答；模型之后再写的话（比如重复问题）直接丢掉。
-      const final = await drive(params, abort.signal, (text) => asked || send("delta", { text }), () => closed);
+      const final = await drive(params, abort.signal, (text) => asked || send("delta", { text }), () => closed, (block) => {
+        if (block.type === "server_tool_use") send("status", { text: "正在联网搜索…" });
+        else if (block.type === "web_search_tool_result" && Array.isArray(block.content)) {
+          for (const hit of block.content) {
+            if (hit?.type !== "web_search_result" || typeof hit.url !== "string" || !/^https?:\/\//.test(hit.url) || webSources.some((x) => x.url === hit.url)) continue;
+            let host = "";
+            try {
+              host = new URL(hit.url).hostname.replace(/^www\./, "");
+            } catch {}
+            webSources.push({ type: "web", id: String(webSources.length + 1), title: String(hit.title || host).slice(0, 200), url: hit.url.slice(0, 300), board: host.slice(0, 80), excerpt: "" });
+          }
+          if (webSources.length) send("web_sources", webSources.slice(0, 6));
+        }
+      });
       if (final?.stop_reason === "refusal") send("error", { message: "这个问题我暂时无法回答，换个问法试试吧。" });
       else {
         if (final?.stop_reason === "tool_use") send("delta", { text: "\n\n（这次要做的步骤比较多，我先做到这里，需要的话让我继续。）" });
