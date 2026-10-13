@@ -339,7 +339,7 @@ function Message({ message, onLink, onRetry, last, tools, who }: { message: Chat
               <span className="assistant-source-kind">网页</span>
               <span className="assistant-source-body">
                 <strong>{source.title}</strong>
-                {source.board && <small>{source.board}</small>}
+                {(source.board || source.excerpt) && <small>{[source.board, source.excerpt].filter(Boolean).join(" · ")}</small>}
               </span>
               <ArrowUpRight size={14} />
             </a>
@@ -467,6 +467,7 @@ export default function AssistantDock({ userId, shared = null }: { userId: strin
   const picker = useRef<HTMLInputElement>(null);
   const errorTimer = useRef(0);
   const [aiReady, setAiReady] = useState<boolean | null>(null);
+  const [webReady, setWebReady] = useState(true);
   const dock = useRef<HTMLDivElement>(null);
   const ball = useRef<HTMLButtonElement>(null);
   const input = useRef<HTMLTextAreaElement>(null);
@@ -713,7 +714,10 @@ export default function AssistantDock({ userId, shared = null }: { userId: strin
     setOpen(true);
     fetch("/api/assistant/status", { credentials: "same-origin" })
       .then((r) => r.json())
-      .then((r) => setAiReady(!!r.ai))
+      .then((r) => {
+        setAiReady(!!r.ai);
+        setWebReady(r.web !== false);
+      })
       .catch(() => setAiReady(null));
   }, [layoutPanel]);
 
@@ -1295,9 +1299,9 @@ export default function AssistantDock({ userId, shared = null }: { userId: strin
                   addFiles(Array.from(event.dataTransfer.files));
                 }}
               >
-                {(files.length > 0 || fileError || prefs.webSearch) && (
+                {(files.length > 0 || fileError || (webReady && prefs.webSearch)) && (
                   <div className="assistant-attach-list">
-                    {prefs.webSearch && (
+                    {webReady && prefs.webSearch && (
                       <span className="assistant-attach is-web">
                         <Globe2 size={15} aria-hidden="true" />
                         <span className="assistant-attach-name">联网搜索</span>
@@ -1407,7 +1411,7 @@ export default function AssistantDock({ userId, shared = null }: { userId: strin
                   items={[
                     { label: "上传新文件", icon: <Upload size={14} />, onSelect: () => picker.current?.click() },
                     ...(userId ? [{ label: "从图书馆选择", icon: <LibraryBig size={14} />, onSelect: () => { setPickerTab("library"); setView("picker"); } }] : []),
-                    { label: prefs.webSearch ? "关闭联网搜索" : "联网搜索", icon: <Globe2 size={14} />, onSelect: () => updatePrefs({ webSearch: !prefs.webSearch }) },
+                    ...(webReady ? [{ label: prefs.webSearch ? "关闭联网搜索" : "联网搜索", icon: <Globe2 size={14} />, onSelect: () => updatePrefs({ webSearch: !prefs.webSearch }) }] : []),
                     { label: "搜索站内文章和资源", icon: <Globe2 size={14} />, onSelect: () => { setPickerTab("site"); setView("picker"); } },
                   ]}
                 />

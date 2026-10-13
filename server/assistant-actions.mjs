@@ -3,6 +3,7 @@ import { db } from "./database.mjs";
 import { plainText } from "./rich-text.mjs";
 import { createTask, deleteTask, describeSchedule, getTask, listTasks, repeats, updateTask } from "./assistant-tasks.mjs";
 import { addMemory, forgetMemory, kindLabels, listMemories, memoryKinds } from "./assistant-memory.mjs";
+import { WebSearchError, webSearch } from "./web-search.mjs";
 
 // Everything a member can do on the site, exposed to Naimakes as tools. Each
 // action goes through the site's own /api routes as the signed-in member, so
@@ -865,6 +866,42 @@ const actionList = [
       return { data: { ok: true }, summary: `已更新与 ${member.name} 的对话设置` };
     },
   },
+
+  // —— 联网搜索（站点配置了搜索服务时才有）——
+  ...(webSearch.enabled
+    ? [
+        {
+          name: "web_search",
+          title: "联网搜索",
+          kind: "read",
+          login: false,
+          activity: (input) => `正在联网搜索：${clip(input.query, 24)}`,
+          description:
+            "在互联网上搜索，返回网页的标题、url、网站、发布日期和摘要。用户问到新闻、最新进展、实时数据、本站没有的事实，或明确要求「上网查」「搜一下」时调用；只关于本站内容和使用方法的问题不要调用。关键词要具体，可以加上年份或时间；一次回答最多搜几次，结果不够再换关键词。",
+          input: shape(
+            {
+              query: str("搜索关键词，具体、简短", 120, 1),
+              recency: oneOf(["day", "week", "month", "year", "any"], "只看这段时间内发布的网页，默认 any；问最新动态时用 week 或 month"),
+              count: { type: "integer", description: "返回几条结果，默认 6", minimum: 1, maximum: 10 },
+            },
+            ["query"],
+          ),
+          async run(input, ctx) {
+            ctx.searches = (ctx.searches || 0) + 1;
+            if (ctx.searches > webSearch.perAnswer) throw new ActionError(`这次回答已经联网搜索了 ${webSearch.perAnswer} 次，请根据已有结果作答。`, 429);
+            let results;
+            try {
+              results = await webSearch.search({ query: input.query, recency: input.recency, count: input.count || 6 });
+            } catch (error) {
+              if (error instanceof WebSearchError) throw new ActionError(error.message, 503);
+              throw error;
+            }
+            ctx.cite?.(results);
+            return { data: { query: input.query, total: results.length, results } };
+          },
+        },
+      ]
+    : []),
 
   // —— 记忆 ——
   {

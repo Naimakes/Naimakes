@@ -93,7 +93,7 @@ export type Scene = keyof typeof scenes;
 
 const toolScenes: [RegExp, Scene][] = [
   [/^create_agent$/, "spawning"],
-  [/^(search_posts|find_users)$/, "searching"],
+  [/^(search_posts|find_users|web_search)$/, "searching"],
   [/^(list_notifications|list_conversations|read_conversation|mark_notifications_read)$/, "inbox"],
   [/^(get_post|get_user)$/, "reading"],
   [/(memor|agent|scheduled_task|^remember$|assistant_settings)/, "managing"],
