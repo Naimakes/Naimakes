@@ -4,18 +4,19 @@ export type AssistantPrefs = {
   shape: string;
   color: string;
   thinking: Thinking;
+  webSearch: boolean;
 };
 
 export type Thinking = "fast" | "balanced" | "deep";
 export const thinkingModes: { id: Thinking; label: string; hint: string }[] = [
-  { id: "fast", label: "快速", hint: "回答最快，适合简单问题" },
+  { id: "fast", label: "即时", hint: "回答最快，适合简单问题" },
   { id: "balanced", label: "均衡", hint: "速度与思考深度兼顾" },
   { id: "deep", label: "深入", hint: "思考更久，适合复杂问题，回答较慢" },
 ];
 
 export type SyncState = { state: "busy" | "done" | "error"; at: number } | null;
 
-export const defaultPrefs: AssistantPrefs = { shape: "blob", color: "black", thinking: "fast" };
+export const defaultPrefs: AssistantPrefs = { shape: "blob", color: "black", thinking: "fast", webSearch: false };
 
 export const shapeNames: Record<string, string> = {
   blob: "团子",
@@ -100,6 +101,7 @@ export function clean(input: unknown): Partial<AssistantPrefs> {
   if (typeof source.shape === "string" && source.shape in shapeNames) out.shape = source.shape;
   if (typeof source.color === "string" && source.color in swatches) out.color = source.color;
   if (source.thinking === "fast" || source.thinking === "balanced" || source.thinking === "deep") out.thinking = source.thinking;
+  if (typeof source.webSearch === "boolean") out.webSearch = source.webSearch;
   return out;
 }
 

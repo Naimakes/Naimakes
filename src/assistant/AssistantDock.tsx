@@ -6,7 +6,7 @@ import remarkGfm from "remark-gfm";
 import { ArrowUp, ArrowUpRight, Ban, Check, ChevronLeft, ChevronRight, Clock, Copy, FileText, GitBranch, Globe2, History, LoaderCircle, LibraryBig, Mic, Minus, Pencil, Plus, RefreshCw, RotateCcw, Square, SquarePen, Upload, X } from "lucide-react";
 import { LiquidButton } from "../forum/motion/LiquidButton";
 import { useMotionPreferences } from "../forum/motion/motion-preferences";
-import { ThinkingSwitch } from "./ThinkingSwitch";
+import { ThinkingGauge } from "./ThinkingGauge";
 import AssistantDetails from "./AssistantDetails";
 import AssistantHistory from "./AssistantHistory";
 import AssistantNewChat from "./AssistantNewChat";
@@ -25,7 +25,7 @@ import ContextMenu, { useContextMenu } from "../forum/ui/ContextMenu";
 import { longPressMenu, type MenuPoint } from "../forum/ui/GlassSegments";
 import { isPostRequest, pickMood, taskDifficulty } from "./mood";
 import { go, recentlyViewed } from "./nav";
-import { connectAccount, readPosition, savePosition, useNotify } from "./prefs";
+import { connectAccount, readPosition, savePosition, updatePrefs, useNotify, usePrefs } from "./prefs";
 import "./assistant.css";
 import "./assistant-agents.css";
 
@@ -262,7 +262,8 @@ function Message({ message, onLink, onRetry, last, tools, who }: { message: Chat
       </div>
     );
   }
-  const sources = (message.sources || []).slice(0, 4);
+  const sources = (message.sources || []).filter((s) => s.type !== "web").slice(0, 4);
+  const web = (message.sources || []).filter((s) => s.type === "web");
   const actions = message.actions || [];
   const empty = !message.content && !message.error && !actions.length && !message.choices;
   if (empty) return null;
@@ -327,6 +328,21 @@ function Message({ message, onLink, onRetry, last, tools, who }: { message: Chat
               </span>
               <ArrowUpRight size={14} />
             </LiquidButton>
+          ))}
+        </div>
+      )}
+      {web.length > 0 && (
+        <div className="assistant-sources is-web">
+          <span className="assistant-sources-title">联网参考 · {web.length}</span>
+          {web.map((source) => (
+            <a key={source.url} className="assistant-source" href={source.url} target="_blank" rel="noopener noreferrer nofollow">
+              <span className="assistant-source-kind">网页</span>
+              <span className="assistant-source-body">
+                <strong>{source.title}</strong>
+                {source.board && <small>{source.board}</small>}
+              </span>
+              <ArrowUpRight size={14} />
+            </a>
           ))}
         </div>
       )}
@@ -421,6 +437,7 @@ function useTopLayerHost() {
 }
 
 export default function AssistantDock({ userId, shared = null }: { userId: string | null; shared?: { token: string; nonce: number } | null }) {
+  const prefs = usePrefs();
   const [sharedToken, setSharedToken] = useState("");
   const host = useTopLayerHost();
   const { agents, main, mainId, byId } = useAgents();
@@ -1221,8 +1238,17 @@ export default function AssistantDock({ userId, shared = null }: { userId: strin
                   addFiles(Array.from(event.dataTransfer.files));
                 }}
               >
-                {(files.length > 0 || fileError) && (
+                {(files.length > 0 || fileError || prefs.webSearch) && (
                   <div className="assistant-attach-list">
+                    {prefs.webSearch && (
+                      <span className="assistant-attach is-web">
+                        <Globe2 size={15} aria-hidden="true" />
+                        <span className="assistant-attach-name">联网搜索</span>
+                        <button type="button" aria-label="关闭联网搜索" onClick={() => updatePrefs({ webSearch: false })}>
+                          <X size={13} />
+                        </button>
+                      </span>
+                    )}
                     {files.map((file) => (
                       <span className="assistant-attach" key={file.id}>
                         {file.preview ? <img src={file.preview} alt="" /> : <FileText size={15} aria-hidden="true" />}
@@ -1235,7 +1261,6 @@ export default function AssistantDock({ userId, shared = null }: { userId: strin
                     {fileError && <span className="assistant-attach-error" role="alert">{fileError}</span>}
                   </div>
                 )}
-                <ThinkingSwitch compact disabled={chat.phase !== "idle"} />
                 <div className="assistant-compose-row">
                   <input
                     ref={picker}
@@ -1286,6 +1311,7 @@ export default function AssistantDock({ userId, shared = null }: { userId: strin
                       }
                     }}
                   />
+                  <ThinkingGauge disabled={chat.phase !== "idle"} />
                   <LiquidButton
                     type="button"
                     className={"icon-button assistant-mic" + (voice.listening ? " is-listening" : "")}
@@ -1324,6 +1350,7 @@ export default function AssistantDock({ userId, shared = null }: { userId: strin
                   items={[
                     { label: "上传新文件", icon: <Upload size={14} />, onSelect: () => picker.current?.click() },
                     ...(userId ? [{ label: "从图书馆选择", icon: <LibraryBig size={14} />, onSelect: () => { setPickerTab("library"); setView("picker"); } }] : []),
+                    { label: prefs.webSearch ? "关闭联网搜索" : "联网搜索", icon: <Globe2 size={14} />, onSelect: () => updatePrefs({ webSearch: !prefs.webSearch }) },
                     { label: "搜索站内文章和资源", icon: <Globe2 size={14} />, onSelect: () => { setPickerTab("site"); setView("picker"); } },
                   ]}
                 />
