@@ -1389,29 +1389,7 @@ export default function AssistantDock({ userId, shared = null }: { userId: strin
                     {fileError && <span className="assistant-attach-error" role="alert">{fileError}</span>}
                   </div>
                 )}
-                <div className="assistant-compose-row">
-                  <input
-                    ref={picker}
-                    type="file"
-                    hidden
-                    multiple
-                    accept={accept}
-                    onChange={(event) => {
-                      addFiles(Array.from(event.target.files || []));
-                      event.target.value = "";
-                    }}
-                  />
-                  <LiquidButton
-                    type="button"
-                    className="icon-button assistant-add"
-                    aria-label="添加附件（上传新文件、从图书馆选择，或搜索站内文章）"
-                    title="添加附件"
-                    aria-haspopup="menu"
-                    disabled={chat.phase !== "idle" || files.length >= MAX_FILES}
-                    onClick={(event) => attachMenu.open(event, null)}
-                  >
-                    <Plus size={18} />
-                  </LiquidButton>
+                <div className="assistant-compose-box">
                   <textarea
                     ref={input}
                     value={draft}
@@ -1439,27 +1417,52 @@ export default function AssistantDock({ userId, shared = null }: { userId: strin
                       }
                     }}
                   />
-                  <ThinkingGauge disabled={chat.phase !== "idle"} />
-                  <LiquidButton
-                    type="button"
-                    className={"icon-button assistant-mic" + (voice.listening ? " is-listening" : "")}
-                    aria-label={voice.listening ? "停止语音输入" : "语音输入"}
-                    aria-pressed={voice.listening}
-                    title={voiceSupported() ? (voice.listening ? "点一下结束语音输入" : "语音输入") : "当前浏览器不支持语音输入"}
-                    disabled={chat.phase !== "idle"}
-                    onClick={toggleVoice}
-                  >
-                    {voice.listening ? <Square size={12} fill="currentColor" /> : <Mic size={17} />}
-                  </LiquidButton>
-                  {chat.phase === "idle" ? (
-                    <LiquidButton type="submit" className="icon-button assistant-send" aria-label="发送" disabled={!draft.trim() && !files.length}>
-                      <ArrowUp size={17} />
+                  <div className="assistant-compose-row">
+                    <input
+                      ref={picker}
+                      type="file"
+                      hidden
+                      multiple
+                      accept={accept}
+                      onChange={(event) => {
+                        addFiles(Array.from(event.target.files || []));
+                        event.target.value = "";
+                      }}
+                    />
+                    <LiquidButton
+                      type="button"
+                      className="icon-button assistant-add"
+                      aria-label="添加附件（上传新文件、从图书馆选择，或搜索站内文章）"
+                      title="添加附件"
+                      aria-haspopup="menu"
+                      disabled={chat.phase !== "idle" || files.length >= MAX_FILES}
+                      onClick={(event) => attachMenu.open(event, null)}
+                    >
+                      <Plus size={18} />
                     </LiquidButton>
-                  ) : (
-                    <LiquidButton type="button" className="icon-button assistant-send is-stop" aria-label="停止回答" onClick={stopReply}>
-                      <Square size={13} fill="currentColor" />
+                    <span className="assistant-compose-gap" />
+                    <ThinkingGauge disabled={chat.phase !== "idle"} />
+                    <LiquidButton
+                      type="button"
+                      className={"icon-button assistant-mic" + (voice.listening ? " is-listening" : "")}
+                      aria-label={voice.listening ? "停止语音输入" : "语音输入"}
+                      aria-pressed={voice.listening}
+                      title={voiceSupported() ? (voice.listening ? "点一下结束语音输入" : "语音输入") : "当前浏览器不支持语音输入"}
+                      disabled={chat.phase !== "idle"}
+                      onClick={toggleVoice}
+                    >
+                      {voice.listening ? <Square size={12} fill="currentColor" /> : <Mic size={17} />}
                     </LiquidButton>
-                  )}
+                    {chat.phase === "idle" ? (
+                      <LiquidButton type="submit" className="icon-button assistant-send" aria-label="发送" disabled={!draft.trim() && !files.length}>
+                        <ArrowUp size={17} />
+                      </LiquidButton>
+                    ) : (
+                      <LiquidButton type="button" className="icon-button assistant-send is-stop" aria-label="停止回答" onClick={stopReply}>
+                        <Square size={13} fill="currentColor" />
+                      </LiquidButton>
+                    )}
+                  </div>
                 </div>
               </form>
               {toast && (
