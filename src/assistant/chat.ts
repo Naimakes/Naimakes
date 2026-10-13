@@ -50,6 +50,8 @@ type ChatState = {
   history: HistoryItem[] | null;
   historyError: string;
   activity: string;
+  // 这一轮正在调用的站内工具名，助手据此换动作；没在调用工具时为空。
+  tool: string;
   branching: boolean;
   // 这段对话里的智能体：一个是单聊，两三个是群聊。auto 表示还没人专门挑过，跟随主智能体。
   agents: string[];
@@ -109,7 +111,7 @@ function fresh(id: string): ChatState {
   // 有记录的老对话没存过智能体，就是 Naimakes；空对话跟随主智能体。
   const stored = loadAgents(id);
   const agents = stored ?? (messages.length ? [BUILTIN_AGENT] : [mainAgentId()]);
-  return { messages, phase: "idle", unread: false, title: loadTitle(id), id: loadId(id), signedIn: id !== "guest", history: null, historyError: "", activity: "", branching: false, agents, auto: !stored && !messages.length };
+  return { messages, phase: "idle", unread: false, title: loadTitle(id), id: loadId(id), signedIn: id !== "guest", history: null, historyError: "", activity: "", tool: "", branching: false, agents, auto: !stored && !messages.length };
 }
 
 function loadTitle(id: string): string {
@@ -280,7 +282,7 @@ export async function openChat(id: string) {
     halt();
     sent.clear();
     const messages = Array.isArray(data.messages) ? data.messages.filter((m) => m && typeof m.content === "string").slice(-LIMIT) : [];
-    set({ messages, id: data.id, title: data.title || "", phase: "idle", unread: false, activity: "", agents: usableAgents(data.agents), auto: false }, true);
+    set({ messages, id: data.id, title: data.title || "", phase: "idle", unread: false, activity: "", tool: "", agents: usableAgents(data.agents), auto: false }, true);
     return true;
   } catch {
     set({ historyError: "这段对话打开失败，请稍后再试。" });
@@ -318,7 +320,7 @@ export function clearChat(agents?: string[]) {
   halt();
   sent.clear();
   const picked = agents?.length ? usableAgents(agents) : null;
-  set({ messages: [], phase: "idle", unread: false, title: "", id: uid(), activity: "", agents: picked ?? [mainAgentId()], auto: !picked }, true);
+  set({ messages: [], phase: "idle", unread: false, title: "", id: uid(), activity: "", tool: "", agents: picked ?? [mainAgentId()], auto: !picked }, true);
 }
 
 // 停掉正在进行的回答，并让它之后不再改动界面。
@@ -571,13 +573,13 @@ async function converse(turn: Turn, page: Page, abort: AbortController) {
           // The server has filed the upload in the library; remember which entry it is so it can be sent by reference later.
           const ids = data as { id: string | null }[];
           if (userId) set({ messages: state.messages.map((m) => (m.id === userId ? { ...m, files: (m.files || []).map((f, i) => (ids[i]?.id ? { ...f, id: ids[i].id! } : f)) } : m)) }, true);
-        } else if (event === "status") set({ activity: (data as { text: string }).text });
+        } else if (event === "status") set({ activity: (data as { text: string }).text, tool: (data as { tool?: string }).tool || "" });
         else if (event === "choices") patchLast((m) => ({ ...m, choices: data as Choices }), true);
         else if (event === "action") {
           patchLast((m) => upsertAction(m, data as AgentAction), true);
           applied(data as AgentAction);
         } else if (event === "delta") {
-          if ((state.phase as Phase) !== "writing" || state.activity) set({ phase: "writing", activity: "" });
+          if ((state.phase as Phase) !== "writing" || state.activity || state.tool) set({ phase: "writing", activity: "", tool: "" });
           patchLast((m) => ({ ...m, content: m.content + (data as { text: string }).text }));
         } else if (event === "error") {
           patchLast((m) => ({ ...m, error: (data as { message: string }).message }));
@@ -611,7 +613,7 @@ function finish(abort: AbortController, { visible }: Options) {
   if (controller !== abort) return;
   controller = null;
   settleVersions();
-  set({ phase: "idle", unread: !visible(), activity: "" }, true);
+  set({ phase: "idle", unread: !visible(), activity: "", tool: "" }, true);
   if (abort.signal.aborted) {
     push(owner);
     return;
@@ -648,7 +650,7 @@ async function round(job: Job, page: Page, options: Options, abort: AbortControl
       const agent = order[i];
       const reply: ChatMessage = job.reply && i === 0 ? job.reply : { id: uid(), role: "assistant", content: "", at: Date.now(), agent };
       if (!(job.reply && i === 0)) set({ messages: [...state.messages, reply].slice(-LIMIT) }, true);
-      set({ phase: "searching", activity: "" });
+      set({ phase: "searching", activity: "", tool: "" });
       const turn: Turn = {
         text: job.bootstrap ? BOOTSTRAP_TEXT : job.text + (job.note || ""),
         files: job.files,
@@ -780,7 +782,7 @@ export async function branchFrom(id: string): Promise<boolean> {
       content: `这是从「${title}」分出的新分支。下面是原对话的整理，你可以直接接着聊：\n\n${data.summary}`,
       at: Date.now(),
     };
-    set({ messages: [intro], id: uid(), title: "分支：" + title.slice(0, 16), phase: "idle", unread: false, branching: false, activity: "", auto: false }, true);
+    set({ messages: [intro], id: uid(), title: "分支：" + title.slice(0, 16), phase: "idle", unread: false, branching: false, activity: "", tool: "", auto: false }, true);
     push(forOwner);
     return true;
   } catch (error) {
