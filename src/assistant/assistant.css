@@ -330,7 +330,7 @@ body:has(.landing-layer) .assistant-host { display: none !important; }
   max-width: 86%;
   margin: 0;
   padding: 10px 14px;
-  border-radius: 18px 18px 6px 18px;
+  border-radius: 20px;
   background: var(--glass-selection-bg, #000);
   color: var(--glass-selection-text, #fff);
   box-shadow: var(--glass-selection-shadow);
@@ -343,7 +343,7 @@ body:has(.landing-layer) .assistant-host { display: none !important; }
 .assistant-markdown {
   padding: 12px 14px;
   border: 1px solid rgb(var(--paper-rim-rgb, 253 250 246) / .7);
-  border-radius: 18px 18px 18px 6px;
+  border-radius: 20px;
   background: rgb(var(--paper-lift-rgb, 245 241 237) / .66);
   box-shadow: inset 1px 1px 1px rgb(255 255 255 / .7), 0 4px 14px -10px rgb(0 0 0 / .22);
   font-size: 14px;
