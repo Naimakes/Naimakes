@@ -46,6 +46,7 @@ import {
 import Avatar from "../ui/Avatar";
 import BannerEditor from "./BannerEditor";
 import AccountSettings from "../settings/AccountSettings";
+import InlineName from "./InlineName";
 import { SettingsNav, scrollToSection } from "../settings/SettingsNav";
 import "../settings/settings.css";
 import AccountDeletion from "./AccountDeletion";
@@ -619,16 +620,6 @@ export default function Profile({
           <ArrowLeft size={15} />
           返回社区
         </LiquidButton>
-        {editing && (
-          <LiquidButton
-            type="button"
-            className="profile-banner-edit profile-banner-edit-profile"
-            onClick={() => openSettings("profile")}
-          >
-            <Settings2 size={14} />
-            编辑资料
-          </LiquidButton>
-        )}
         {self && (
           <div className="profile-viewas" ref={viewRef}>
             <LiquidButton
@@ -700,7 +691,11 @@ export default function Profile({
           </div>
           <div className="profile-heading">
             <h1>
-              {person.name}
+              {editing && me ? (
+                <InlineName user={me} onUser={updateUser} notify={notify} />
+              ) : (
+                person.name
+              )}
               <RoleBadges person={person} large />
             </h1>
             {editing ? (
