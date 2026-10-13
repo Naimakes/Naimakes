@@ -36,6 +36,8 @@ export default function SearchResults(props: Props) {
   const relatedPosts = posts.filter((p) => p.match === "related");
   const [draft, setDraft] = useState(query);
   const input = useRef<HTMLInputElement>(null);
+  const composing = useRef(false);
+  const composedAt = useRef(0);
   useEffect(() => setDraft(query), [query]);
   const tabs = [{ id: "all", name: "综合" }, ...categories];
   const filtered = category !== "all" || sort === "unanswered";
@@ -52,8 +54,8 @@ export default function SearchResults(props: Props) {
         else input.current?.focus();
       }}>
         <Search size={24} aria-hidden="true" />
-        <input ref={input} type="search" value={draft} maxLength={120} aria-label="搜索关键词" placeholder="搜索话题、想法、关键词…" onChange={(event) => setDraft(event.target.value)} onKeyDown={(event) => {
-          if (event.key === "Enter" && (event.nativeEvent.isComposing || event.nativeEvent.keyCode === 229)) event.preventDefault();
+        <input ref={input} type="search" value={draft} maxLength={120} aria-label="搜索关键词" placeholder="搜索话题、想法、关键词…" onChange={(event) => setDraft(event.target.value)} onCompositionStart={() => (composing.current = true)} onCompositionEnd={() => { composing.current = false; composedAt.current = Date.now(); }} onKeyDown={(event) => {
+          if (event.key === "Enter" && (composing.current || Date.now() - composedAt.current < 40)) event.preventDefault();
         }} />
         {draft && <LiquidButton type="button" className="icon-button search-page-clear" aria-label="清空搜索输入" onClick={() => { setDraft(""); input.current?.focus(); }}><X size={18} /></LiquidButton>}
         <LiquidButton className="search-page-submit" type="submit" disabled={!normalizeSearchQuery(draft)}>搜索<ArrowRight size={17} /></LiquidButton>

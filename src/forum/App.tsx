@@ -322,6 +322,8 @@ export default function App() {
     boardMenuTrigger = useRef<HTMLButtonElement>(null),
     pendingAction = useRef<null | (() => void)>(null);
   const searchRecents = useRecents("search", !!user);
+  const composing = useRef(false);
+  const composedAt = useRef(0);
   const paletteFavoriteQuery = normalizeSearchQuery(paletteQuery.replace(/^#+/, ""));
   const paletteFavorite = {
     query: paletteFavoriteQuery,
@@ -2887,10 +2889,16 @@ export default function App() {
                 placeholder="搜索话题、想法、关键词…"
                 aria-label="搜索讨论"
                 maxLength={120}
+                onCompositionStart={() => (composing.current = true)}
+                onCompositionEnd={() => {
+                  composing.current = false;
+                  composedAt.current = Date.now();
+                }}
                 onKeyDown={(e) => {
+                  // 只拦截输入法选字用的回车；iOS 中文键盘的「搜索」键 keyCode 也是 229，不能拦
                   if (
                     e.key === "Enter" &&
-                    (e.nativeEvent.isComposing || e.nativeEvent.keyCode === 229)
+                    (composing.current || Date.now() - composedAt.current < 40)
                   )
                     e.preventDefault();
                 }}
