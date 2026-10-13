@@ -94,18 +94,43 @@ body:has(.landing-layer) .assistant-host { display: none !important; }
   transform: scale(.5);
   animation: none;
 }
-/* 没有玻璃球托着，机器人直接站在页面上，靠一层柔和的投影和背景分开。 */
+/* 悬浮在页面侧边时，机器人站在一块液态玻璃圆底板上：半透明、模糊背后的内容，带高光边和投影。 */
+.assistant-ball::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border: 1px solid rgb(255 255 255 / .72);
+  border-radius: 50%;
+  background:
+    radial-gradient(120% 90% at 30% 12%, rgb(255 255 255 / .62), rgb(255 255 255 / 0) 58%),
+    rgb(var(--paper-lift-rgb, 245 241 237) / .42);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / .95),
+    inset 0 -2px 6px rgb(0 0 0 / .05),
+    0 0 0 .5px rgb(0 0 0 / .08),
+    0 2px 5px -2px rgb(0 0 0 / .16),
+    0 12px 26px -12px rgb(0 0 0 / .32);
+  -webkit-backdrop-filter: blur(14px) saturate(1.8);
+  backdrop-filter: blur(14px) saturate(1.8);
+  pointer-events: none;
+  transition: box-shadow .28s var(--assistant-ease);
+}
+.assistant-dock.is-dragging .assistant-ball::before {
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / .95),
+    inset 0 -2px 6px rgb(0 0 0 / .05),
+    0 0 0 .5px rgb(0 0 0 / .08),
+    0 6px 12px -4px rgb(0 0 0 / .18),
+    0 22px 36px -14px rgb(0 0 0 / .36);
+}
 .assistant-ball-bot {
   position: relative;
   display: block;
-  width: 88%;
-  height: 88%;
+  width: 72%;
+  height: 72%;
   overflow: visible;
   pointer-events: none;
-  filter: drop-shadow(0 6px 8px rgb(0 0 0 / .22)) drop-shadow(0 1px 2px rgb(0 0 0 / .12));
-}
-.assistant-dock.is-dragging .assistant-ball-bot {
-  filter: drop-shadow(0 16px 14px rgb(0 0 0 / .26)) drop-shadow(0 2px 4px rgb(0 0 0 / .12));
+  filter: drop-shadow(0 3px 4px rgb(0 0 0 / .18)) drop-shadow(0 1px 1px rgb(0 0 0 / .1));
 }
 .assistant-ball-badge {
   position: absolute;
@@ -211,14 +236,6 @@ body:has(.landing-layer) .assistant-host { display: none !important; }
   font-size: 14px;
   font-weight: 600;
   line-height: 1.3;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-}
-.assistant-identity-text small {
-  overflow: hidden;
-  color: var(--assistant-soft);
-  font-size: 12px;
-  line-height: 1.4;
   white-space: nowrap;
   text-overflow: ellipsis;
 }
@@ -816,7 +833,14 @@ body:has(.landing-layer) .assistant-host { display: none !important; }
 
 @media (max-width: 639px) {
   .assistant-head { padding: 10px 10px; gap: 8px; }
-  .assistant-head-actions { gap: 6px; }
+  .assistant-head-actions { gap: 4px; }
+  .assistant-panel .assistant-identity { gap: 8px; padding-right: 10px; }
+  :root .assistant-head-actions button.glass-btn[data-liquid-button][data-icon-only="true"] {
+    width: 38px;
+    height: 38px;
+    min-width: 38px;
+    min-height: 38px;
+  }
   .assistant-bar { padding: 10px; }
   .assistant-body { padding: 16px 14px 18px; }
   .assistant-compose { padding: 8px 8px 10px; }

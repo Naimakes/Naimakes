@@ -1283,9 +1283,6 @@ export default function AssistantDock({ userId, shared = null }: { userId: strin
                   )}
                   <span className="assistant-identity-text">
                     <strong title={chatName}>{group ? `群聊（${chatAgents.length}）` : lead.name}</strong>
-                    <small aria-live="polite" title={chat.phase === "idle" ? chat.title : undefined}>
-                      {chat.phase === "idle" && chat.title ? chat.title : status}
-                    </small>
                   </span>
                   <ChevronRight size={16} aria-hidden="true" />
                 </LiquidButton>
