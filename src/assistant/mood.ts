@@ -130,9 +130,9 @@ export function useScene(scene: Scene | null, reduced: boolean) {
       const pose = main ? poses[0] : choices[Math.floor(Math.random() * choices.length)];
       if (!main) last = pose;
       show(pose);
-      timer = window.setTimeout(step, main ? between(3600, 5600) : between(2000, 3000));
+      timer = window.setTimeout(step, main ? between(12000, 20000) : between(3500, 4800));
     };
-    timer = window.setTimeout(step, between(3600, 5600));
+    timer = window.setTimeout(step, between(12000, 20000));
     return () => clearTimeout(timer);
   }, [scene, reduced]);
   if (!scene) return null;

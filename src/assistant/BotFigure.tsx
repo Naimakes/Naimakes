@@ -8,6 +8,11 @@ export type BotHandle = { poke: (kind?: PokeKind) => void; blink: () => void };
 
 const pokeCycle: PokeKind[] = ["spin", "bounce", "nod"];
 const IDLE_PAUSE_MS = 1400;
+// 闲着的时候最常做的两件事：眨眼，和左右扭扭头、抬头看一看。身体大小不变，只是脸和头在动。
+const calmStates = new Set(["idle", "listening", "humming"]);
+const glances = ["left", "right", "left", "right", "up"] as const;
+const between = (min: number, max: number) => min + Math.random() * (max - min);
+const stillMotion = () => document.hidden || matchMedia("(prefers-reduced-motion: reduce)").matches || document.documentElement.dataset.motion === "reduced";
 
 type Props = {
   look: BotLook;
@@ -18,12 +23,13 @@ type Props = {
   fps?: number;
   idle?: "pause" | "alive";
   clickPoke?: boolean;
+  life?: boolean;
   className?: string;
   label?: string;
 };
 
 export const BotFigure = forwardRef<BotHandle, Props>(function BotFigure(
-  { look, state = "idle", paused = false, emphasis = false, follow = true, fps = 60, idle = "pause", clickPoke = false, className = "", label },
+  { look, state = "idle", paused = false, emphasis = false, follow = true, fps = 60, idle = "pause", clickPoke = false, life = true, className = "", label },
   handle,
 ) {
   const host = useRef<HTMLSpanElement>(null);
@@ -123,6 +129,44 @@ export const BotFigure = forwardRef<BotHandle, Props>(function BotFigure(
     apply();
     return () => clearTimeout(timer);
   }, [state]);
+
+  const calm = calmStates.has(state);
+  // 只对一直「活着」的头像（idle="alive"）做：暂停（休息）的引擎会忽略眨眼，脸也停在休息的姿势上。
+  const lively = life && idle === "alive";
+  useEffect(() => {
+    if (!lively || paused || !calm) return;
+    let blinkTimer = 0;
+    let doubleTimer = 0;
+    let glanceTimer = 0;
+    let backTimer = 0;
+    const blink = () => {
+      blinkTimer = window.setTimeout(() => {
+        if (!stillMotion()) {
+          bot.current?.blink();
+          if (Math.random() < 0.2) doubleTimer = window.setTimeout(() => bot.current?.blink(), 420);
+        }
+        blink();
+      }, between(2600, 6200));
+    };
+    const glance = () => {
+      glanceTimer = window.setTimeout(() => {
+        if (!stillMotion() && bot.current) {
+          bot.current.look(glances[Math.floor(Math.random() * glances.length)]);
+          backTimer = window.setTimeout(() => bot.current?.look("center"), between(1100, 1900));
+        }
+        glance();
+      }, between(7000, 15000));
+    };
+    blink();
+    glance();
+    return () => {
+      clearTimeout(blinkTimer);
+      clearTimeout(doubleTimer);
+      clearTimeout(glanceTimer);
+      clearTimeout(backTimer);
+      bot.current?.look("center");
+    };
+  }, [lively, paused, calm]);
 
   const onPointerUp = (event: ReactPointerEvent<HTMLSpanElement>) => {
     if (clickPoke && event.button === 0) poke();
