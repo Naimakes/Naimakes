@@ -55,6 +55,7 @@ export function sanitizePrefs(input) {
   if (shapes.includes(input.shape)) out.shape = input.shape;
   if (colors.includes(input.color)) out.color = input.color;
   if (Object.hasOwn(thinkingEfforts, input.thinking)) out.thinking = input.thinking;
+  if (typeof input.webSearch === "boolean") out.webSearch = input.webSearch;
   return out;
 }
 
@@ -576,9 +577,9 @@ const notAllowed = JSON.stringify({
 // The site actions as runnable tools for one run: they act as the member
 // `ctx.user` and report progress over `send`. A scheduled run has nobody to press
 // 确认, so its confirm-kind actions only run if the member allowed it for that task.
-function agentTools(ctx, send, { eager, scheduled = false, allowActions = false }) {
+function agentTools(ctx, send, { eager, scheduled = false, allowActions = false, web = false }) {
   return [...actions.values()]
-    .filter((action) => !(scheduled && action.interactive))
+    .filter((action) => !(scheduled && action.interactive) && (web || action.name !== "web_search"))
     .map((action) => ({
       name: action.name,
       description: action.description,
@@ -592,9 +593,10 @@ function agentTools(ctx, send, { eager, scheduled = false, allowActions = false 
             send("choices", { id: context?.toolUse.id, question: input.question, options: input.options });
             return waitingForChoice;
           }
+          // tool 让助手按正在做的事换动作（搜索、翻看、阅读、改设置……）。
+          if (action.kind === "read" || action.kind === "write")
+            send("status", { text: (typeof action.activity === "function" ? action.activity(input) : action.activity) || "", tool: action.name });
           if (action.kind === "read") {
-            const activity = typeof action.activity === "function" ? action.activity(input) : action.activity;
-            if (activity) send("status", { text: activity });
             return JSON.stringify((await runAction(action, input, ctx)).data);
           }
           if (action.kind === "confirm" && !scheduled) {
@@ -619,8 +621,8 @@ function agentTools(ctx, send, { eager, scheduled = false, allowActions = false 
 const noteOf = (text) => String(text || "").replace(/<\/?(agent_instructions|group_chat)>/g, "");
 
 // 一次回答用的系统提示：站点通用的规则，加上这个智能体自己的设定和所处的场合。
-function systemFor({ agent, group, bootstrap = false }) {
-  let text = instructions + (webSearch.enabled ? webRules : "");
+function systemFor({ agent, group, bootstrap = false, web = false }) {
+  let text = instructions + (web ? webRules : "");
   if (agent) {
     text = text.replace(
       "你的名字叫 Naimakes，是 Naimakes 论坛的 AI 小助理，悬浮在网站每个页面上，帮助访客了解和使用本站。",
@@ -731,7 +733,7 @@ export function installAssistant(app, { auth, liveClause, fileLibrary, sessions 
   }
 
   // Runs the model (and its tools) to the end, handing every piece of answer text to `onText`.
-  async function drive(params, signal, onText, closed = () => false) {
+  async function drive(params, signal, onText, closed = () => false, onBlock = () => {}) {
     if (compat) return client.run(params, signal, onText);
     let runner = client.beta.messages.toolRunner(params, { signal });
     let final = null;
@@ -742,6 +744,7 @@ export function installAssistant(app, { auth, liveClause, fileLibrary, sessions 
         for await (const stream of runner) {
           let gap = wrote;
           for await (const event of stream) {
+            if (event.type === "content_block_start") onBlock(event.content_block);
             if (event.type !== "content_block_delta" || event.delta.type !== "text_delta") continue;
             onText((gap ? "\n\n" : "") + event.delta.text);
             gap = false;
@@ -804,8 +807,8 @@ export function installAssistant(app, { auth, liveClause, fileLibrary, sessions 
         max_tokens: 8000,
         ...(claude ? { betas: ["server-side-fallback-2026-07-01"], fallbacks: "default" } : {}),
         output_config: { effort },
-        system: [{ type: "text", text: systemFor({ agent: taskAgent }) + scheduledNote }],
-        tools: agentTools(ctx, (event, data) => event === "action" && data.status && done.push(data), { eager: false, scheduled: true, allowActions: !!task.allow_actions }),
+        system: [{ type: "text", text: systemFor({ agent: taskAgent, web: webSearch.enabled }) + scheduledNote }],
+        tools: agentTools(ctx, (event, data) => event === "action" && data.status && done.push(data), { eager: false, scheduled: true, allowActions: !!task.allow_actions, web: webSearch.enabled }),
         messages: [{ role: "user", content }],
         stream: true,
         max_iterations: 12,
@@ -904,7 +907,8 @@ export function installAssistant(app, { auth, liveClause, fileLibrary, sessions 
   });
 
   app.get("/api/assistant/status", (_req, res) => {
-    res.json({ ai: !!client, ...index.stats() });
+    // web：「联网搜索」开关能不能用——Claude 有自带的搜索，其他模型要配置了搜索服务才行。
+    res.json({ ai: !!client, web: !!client && (claude || webSearch.enabled), ...index.stats() });
   });
 
   app.get("/api/assistant/search", (req, res) => {
@@ -1234,16 +1238,6 @@ export function installAssistant(app, { auth, liveClause, fileLibrary, sessions 
       return res.end();
     }
 
-    // 联网搜索到的网页追加到参考来源里，最多留 6 条。
-    const cite = (results) => {
-      const before = sources.length;
-      for (const r of results) {
-        const card = webCard(r);
-        if (sources.filter((x) => x.type === "web").length >= 6) break;
-        if (!sources.some((x) => x.type === "web" && x.id === card.id)) sources.push(card);
-      }
-      if (sources.length > before) send("sources", sources);
-    };
     const tz = validZone(req.body?.tz);
     if (req.user) syncTaskZone(req.user.id, req.body?.tz);
     const context =
@@ -1264,13 +1258,27 @@ export function installAssistant(app, { auth, liveClause, fileLibrary, sessions 
     const blocks = [...images, ...documents];
     const payload = messages.slice(0, -1).concat({ role: "user", content: blocks.length ? [...blocks, { type: "text", text }] : text });
 
+    // 用户打开了「联网搜索」：Claude 用它自带的服务端搜索；DeepSeek 和其他 OpenAI 兼容接口用本站的 web_search 工具（需要配置搜索服务）。
+    const wantsWeb = req.body?.webSearch === true && !bootstrap;
+    const nativeWeb = wantsWeb && claude;
+    const siteWeb = wantsWeb && !claude && webSearch.enabled;
+    const webSources = [];
+    // 本站 web_search 搜到的网页，和 Claude 自带搜索的结果一样以 web_sources 发给界面，最多 6 条。
+    const cite = (results) => {
+      const before = webSources.length;
+      for (const r of results) if (webSources.length < 6 && !webSources.some((x) => x.url === r.url)) webSources.push(webCard(r));
+      if (webSources.length > before) send("web_sources", webSources);
+    };
     const params = {
       model,
       max_tokens: 16000,
       ...(claude ? { betas: ["server-side-fallback-2026-07-01"], fallbacks: "default" } : {}),
       output_config: { effort: Object.hasOwn(thinkingEfforts, req.body?.thinking) ? thinkingEfforts[req.body.thinking] : effort },
-      system: [{ type: "text", text: systemFor({ agent, group, bootstrap }), cache_control: { type: "ephemeral" } }],
-      tools: agentTools({ call: memberApi(req, app), user: req.user ? { id: req.user.id, name: req.user.name } : null, tz, agent: agentId, cite }, send, { eager: claude }),
+      system: [{ type: "text", text: systemFor({ agent, group, bootstrap, web: nativeWeb || siteWeb }), cache_control: { type: "ephemeral" } }],
+      tools: [
+        ...agentTools({ call: memberApi(req, app), user: req.user ? { id: req.user.id, name: req.user.name } : null, tz, agent: agentId, cite }, send, { eager: claude, web: siteWeb }),
+        ...(nativeWeb ? [{ type: "web_search_20250305", name: "web_search", max_uses: 5 }] : []),
+      ],
       messages: payload,
       stream: true,
       max_iterations: 12,
@@ -1282,7 +1290,20 @@ export function installAssistant(app, { auth, liveClause, fileLibrary, sessions 
     });
     try {
       // 选择卡片弹出后这一轮就等用户回答；模型之后再写的话（比如重复问题）直接丢掉。
-      const final = await drive(params, abort.signal, (text) => asked || send("delta", { text }), () => closed);
+      const final = await drive(params, abort.signal, (text) => asked || send("delta", { text }), () => closed, (block) => {
+        if (block.type === "server_tool_use") send("status", { text: "正在联网搜索…", tool: "web_search" });
+        else if (block.type === "web_search_tool_result" && Array.isArray(block.content)) {
+          for (const hit of block.content) {
+            if (hit?.type !== "web_search_result" || typeof hit.url !== "string" || !/^https?:\/\//.test(hit.url) || webSources.some((x) => x.url === hit.url)) continue;
+            let host = "";
+            try {
+              host = new URL(hit.url).hostname.replace(/^www\./, "");
+            } catch {}
+            webSources.push({ type: "web", id: String(webSources.length + 1), title: String(hit.title || host).slice(0, 200), url: hit.url.slice(0, 300), board: host.slice(0, 80), excerpt: "" });
+          }
+          if (webSources.length) send("web_sources", webSources.slice(0, 6));
+        }
+      });
       if (final?.stop_reason === "refusal") send("error", { message: "这个问题我暂时无法回答，换个问法试试吧。" });
       else {
         if (final?.stop_reason === "tool_use") send("delta", { text: "\n\n（这次要做的步骤比较多，我先做到这里，需要的话让我继续。）" });

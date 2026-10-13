@@ -27,21 +27,12 @@
   place-items: center;
   width: min(100%, 196px);
   aspect-ratio: 1;
-  border: 1px solid rgb(var(--paper-rim-rgb, 253 250 246) / .8);
-  border-radius: 50%;
-  background:
-    radial-gradient(120% 120% at 30% 16%, rgb(255 255 255 / .75), transparent 48%),
-    rgb(var(--paper-lift-rgb, 245 241 237) / .7);
-  box-shadow:
-    inset 1px 1px 1px rgb(255 255 255 / .95),
-    inset 0 -18px 30px -18px rgb(0 0 0 / .18),
-    0 18px 40px -24px rgb(0 0 0 / .4);
-  transition: background .5s var(--assistant-ease);
 }
 .assistant-preview-bot {
-  width: 64%;
-  height: 64%;
+  width: 84%;
+  height: 84%;
   overflow: visible;
+  filter: drop-shadow(0 14px 14px rgb(0 0 0 / .2));
 }
 .assistant-preview-note {
   margin: 0;

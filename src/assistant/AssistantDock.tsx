@@ -6,7 +6,7 @@ import remarkGfm from "remark-gfm";
 import { ArrowUp, ArrowUpRight, Ban, Check, ChevronLeft, ChevronRight, Clock, Copy, FileText, GitBranch, Globe2, History, LoaderCircle, LibraryBig, Mic, Minus, Pencil, Plus, RefreshCw, RotateCcw, Square, SquarePen, Upload, X } from "lucide-react";
 import { LiquidButton } from "../forum/motion/LiquidButton";
 import { useMotionPreferences } from "../forum/motion/motion-preferences";
-import { ThinkingSwitch } from "./ThinkingSwitch";
+import { ThinkingGauge } from "./ThinkingGauge";
 import AssistantDetails from "./AssistantDetails";
 import AssistantHistory from "./AssistantHistory";
 import AssistantNewChat from "./AssistantNewChat";
@@ -23,9 +23,9 @@ import { answerChoice, answerCount, ask, branchFrom, openChat, cancelAction, cle
 import { useVoiceInput, voiceSupported } from "./voice";
 import ContextMenu, { useContextMenu } from "../forum/ui/ContextMenu";
 import { longPressMenu, type MenuPoint } from "../forum/ui/GlassSegments";
-import { isPostRequest, pickMood, taskDifficulty } from "./mood";
+import { isCodeRequest, isPostRequest, pickActionReaction, pickMood, pickOutcome, sceneOfTool, taskDifficulty, useScene, type Scene } from "./mood";
 import { go, recentlyViewed } from "./nav";
-import { connectAccount, readPosition, savePosition, useNotify } from "./prefs";
+import { connectAccount, readPosition, savePosition, updatePrefs, useNotify, usePrefs } from "./prefs";
 import "./assistant.css";
 import "./assistant-agents.css";
 
@@ -263,7 +263,7 @@ function Message({ message, onLink, onRetry, last, tools, who }: { message: Chat
     );
   }
   const sources = (message.sources || []).filter((s) => s.type !== "web").slice(0, 4);
-  const webSources = (message.sources || []).filter((s) => s.type === "web").slice(0, 6);
+  const web = (message.sources || []).filter((s) => s.type === "web");
   const actions = message.actions || [];
   const empty = !message.content && !message.error && !actions.length && !message.choices;
   if (empty) return null;
@@ -331,11 +331,11 @@ function Message({ message, onLink, onRetry, last, tools, who }: { message: Chat
           ))}
         </div>
       )}
-      {webSources.length > 0 && (
-        <div className="assistant-sources">
-          <span className="assistant-sources-title">网络参考 · {webSources.length}</span>
-          {webSources.map((source) => (
-            <a key={source.id} className="assistant-source is-web" href={source.url} target="_blank" rel="noopener noreferrer nofollow">
+      {web.length > 0 && (
+        <div className="assistant-sources is-web">
+          <span className="assistant-sources-title">联网参考 · {web.length}</span>
+          {web.map((source) => (
+            <a key={source.url} className="assistant-source" href={source.url} target="_blank" rel="noopener noreferrer nofollow">
               <span className="assistant-source-kind">网页</span>
               <span className="assistant-source-body">
                 <strong>{source.title}</strong>
@@ -437,6 +437,7 @@ function useTopLayerHost() {
 }
 
 export default function AssistantDock({ userId, shared = null }: { userId: string | null; shared?: { token: string; nonce: number } | null }) {
+  const prefs = usePrefs();
   const [sharedToken, setSharedToken] = useState("");
   const host = useTopLayerHost();
   const { agents, main, mainId, byId } = useAgents();
@@ -448,6 +449,7 @@ export default function AssistantDock({ userId, shared = null }: { userId: strin
   const [pickerTab, setPickerTab] = useState<PickerTab>("library");
   const attachMenu = useContextMenu<null>();
   const [settled, setSettled] = useState<"success" | "error" | null>(null);
+  const [settledPose, setSettledPose] = useState("finished");
   const [box, setBox] = useState<Box | null>(null);
   const [mood, setMood] = useState("idle");
   const [asleep, setAsleep] = useState(false);
@@ -465,6 +467,7 @@ export default function AssistantDock({ userId, shared = null }: { userId: strin
   const picker = useRef<HTMLInputElement>(null);
   const errorTimer = useRef(0);
   const [aiReady, setAiReady] = useState<boolean | null>(null);
+  const [webReady, setWebReady] = useState(true);
   const dock = useRef<HTMLDivElement>(null);
   const ball = useRef<HTMLButtonElement>(null);
   const input = useRef<HTMLTextAreaElement>(null);
@@ -599,7 +602,10 @@ export default function AssistantDock({ userId, shared = null }: { userId: strin
         if (was) flash("waking", 1400);
         return false;
       });
-      timer = window.setTimeout(() => setAsleep(true), 150000);
+      timer = window.setTimeout(() => {
+        flash("powering-down", 1800);
+        setAsleep(true);
+      }, 150000);
     };
     wake();
     const events = ["pointerdown", "keydown", "scroll", "wheel"] as const;
@@ -630,15 +636,43 @@ export default function AssistantDock({ userId, shared = null }: { userId: strin
     } else if (before !== "idle") {
       const reply = chat.messages[chat.messages.length - 1];
       const outcome = reply?.error ? (reply.error === "已停止回答。" ? null : "error") : reply?.content ? "success" : null;
+      if (reply?.error === "已停止回答。") flash("surprised", 1600);
+      if (outcome) setSettledPose(pickOutcome(reply, taskDifficulty(chat.messages)));
       setSettled(outcome);
       clearTimeout(settleTimer.current);
       if (outcome) settleTimer.current = window.setTimeout(() => setSettled(null), SETTLE_MS);
     }
-  }, [chat.phase, chat.messages]);
+  }, [chat.phase, chat.messages, flash]);
 
   useEffect(() => {
     if (!chat.messages.length) setSettled(null);
   }, [chat.messages.length]);
+
+  // 换了对话里的智能体（新对话、拉人进群、新建智能体）时，闪一下「召唤」的动作。
+  const agentKey = chat.agents.join(",");
+  const previousAgents = useRef(agentKey);
+  useEffect(() => {
+    if (previousAgents.current !== agentKey) flash("spawning", 1800);
+    previousAgents.current = agentKey;
+  }, [agentKey, flash]);
+
+  // 确认执行的操作有了结果：成了点头庆祝，没成就沮丧一下。
+  const actionResults = useRef<Map<string, string> | null>(null);
+  useEffect(() => {
+    const now = new Map<string, string>();
+    chat.messages.forEach((m) => m.actions?.forEach((a) => now.set(a.id, a.status)));
+    const before = actionResults.current;
+    actionResults.current = now;
+    if (!before) return;
+    for (const [id, status] of now) {
+      const was = before.get(id);
+      if (was === status || (status !== "done" && status !== "failed")) continue;
+      if (was === "running" || was === "pending") {
+        flash(pickActionReaction(status === "done"), 2400);
+        break;
+      }
+    }
+  }, [chat.messages, flash]);
 
   useEffect(() => () => {
     clearTimeout(settleTimer.current);
@@ -680,7 +714,10 @@ export default function AssistantDock({ userId, shared = null }: { userId: strin
     setOpen(true);
     fetch("/api/assistant/status", { credentials: "same-origin" })
       .then((r) => r.json())
-      .then((r) => setAiReady(!!r.ai))
+      .then((r) => {
+        setAiReady(!!r.ai);
+        setWebReady(r.web !== false);
+      })
       .catch(() => setAiReady(null));
   }, [layoutPanel]);
 
@@ -730,7 +767,14 @@ export default function AssistantDock({ userId, shared = null }: { userId: strin
     if (near) el.scrollTo({ top: el.scrollHeight, behavior: reduced ? "auto" : "smooth" });
   }, [chat.messages, open, reduced]);
 
+  const seenFiles = useRef(files.length);
+  useEffect(() => {
+    if (files.length > seenFiles.current) flash("uploading", 1500);
+    seenFiles.current = files.length;
+  }, [files.length, flash]);
+
   const pending = chat.messages.reduce((n, m) => n + (m.actions?.filter((a) => a.status === "pending").length || 0), 0);
+  const running = chat.messages.some((m) => m.actions?.some((a) => a.status === "running"));
   const seenPending = useRef(pending);
   useEffect(() => {
     const el = list.current;
@@ -974,28 +1018,47 @@ export default function AssistantDock({ userId, shared = null }: { userId: strin
   const lastAsk = [...chat.messages].reverse().find((m) => m.role === "user");
   const hasFiles = !!lastAsk?.files?.length;
   const drafting = isPostRequest(lastAsk?.content || "");
+  const coding = isCodeRequest(lastAsk?.content || "");
+  // 回答过程中按正在做的事换场景，每个场景里再轮流换几个相近的动作。
+  const scene: Scene | null = dragging
+    ? null
+    : chat.phase !== "idle"
+      ? chat.tool
+        ? sceneOfTool(chat.tool)
+        : chat.phase === "searching"
+          ? hasFiles
+            ? "attachments"
+            : coding
+              ? "coding"
+              : "thinking"
+          : drafting
+            ? "composing"
+            : coding
+              ? "coding"
+              : "answering"
+      : mood !== "idle"
+        ? null
+        : running
+          ? "running"
+          : pending
+            ? "waiting"
+            : settled !== "error" && unread && !open
+              ? "notifying"
+              : null;
+  const posed = useScene(scene, reduced);
+  const voiceScene = useScene(voice.listening && chat.phase === "idle" ? "dictating" : null, reduced);
   const agentState = dragging
     ? "dragging"
-    : chat.phase === "searching"
-      ? hasFiles
-        ? "reading"
-        : "searching"
-      : chat.phase === "writing"
-        ? drafting
-          ? "writing"
-          : "streaming"
-        : mood !== "idle"
-          ? mood
-          : settled === "error"
-            ? "failed"
-            : unread && !open
-              ? "notifying"
-              : settled === "success"
-                ? "finished"
-                : asleep
-                  ? "sleeping"
-                  : "idle";
-  const headState = agentState === "idle" && draft.trim() ? "listening" : agentState;
+    : posed
+      ? posed
+      : mood !== "idle"
+        ? mood
+        : settled
+          ? settledPose
+          : asleep
+            ? "sleeping"
+            : "idle";
+  const headState = voiceScene ?? (agentState === "idle" && draft.trim() ? "listening" : agentState);
   const status = chat.branching
     ? "正在整理原对话…"
     : chat.phase !== "idle" && chat.activity
@@ -1109,7 +1172,6 @@ export default function AssistantDock({ userId, shared = null }: { userId: strin
             open ? closePanel() : openPanel();
           }}
         >
-          <span className="assistant-ball-sheen" aria-hidden="true" />
           <BotFigure look={ballLook} state={agentState} paused={open} follow={false} fps={30} className="assistant-ball-bot" />
           {unread && !open && <span className="assistant-ball-badge" aria-hidden="true" />}
         </button>
@@ -1237,8 +1299,17 @@ export default function AssistantDock({ userId, shared = null }: { userId: strin
                   addFiles(Array.from(event.dataTransfer.files));
                 }}
               >
-                {(files.length > 0 || fileError) && (
+                {(files.length > 0 || fileError || (webReady && prefs.webSearch)) && (
                   <div className="assistant-attach-list">
+                    {webReady && prefs.webSearch && (
+                      <span className="assistant-attach is-web">
+                        <Globe2 size={15} aria-hidden="true" />
+                        <span className="assistant-attach-name">联网搜索</span>
+                        <button type="button" aria-label="关闭联网搜索" onClick={() => updatePrefs({ webSearch: false })}>
+                          <X size={13} />
+                        </button>
+                      </span>
+                    )}
                     {files.map((file) => (
                       <span className="assistant-attach" key={file.id}>
                         {file.preview ? <img src={file.preview} alt="" /> : <FileText size={15} aria-hidden="true" />}
@@ -1251,7 +1322,6 @@ export default function AssistantDock({ userId, shared = null }: { userId: strin
                     {fileError && <span className="assistant-attach-error" role="alert">{fileError}</span>}
                   </div>
                 )}
-                <ThinkingSwitch compact disabled={chat.phase !== "idle"} />
                 <div className="assistant-compose-row">
                   <input
                     ref={picker}
@@ -1302,6 +1372,7 @@ export default function AssistantDock({ userId, shared = null }: { userId: strin
                       }
                     }}
                   />
+                  <ThinkingGauge disabled={chat.phase !== "idle"} />
                   <LiquidButton
                     type="button"
                     className={"icon-button assistant-mic" + (voice.listening ? " is-listening" : "")}
@@ -1340,6 +1411,7 @@ export default function AssistantDock({ userId, shared = null }: { userId: strin
                   items={[
                     { label: "上传新文件", icon: <Upload size={14} />, onSelect: () => picker.current?.click() },
                     ...(userId ? [{ label: "从图书馆选择", icon: <LibraryBig size={14} />, onSelect: () => { setPickerTab("library"); setView("picker"); } }] : []),
+                    ...(webReady ? [{ label: prefs.webSearch ? "关闭联网搜索" : "联网搜索", icon: <Globe2 size={14} />, onSelect: () => updatePrefs({ webSearch: !prefs.webSearch }) }] : []),
                     { label: "搜索站内文章和资源", icon: <Globe2 size={14} />, onSelect: () => { setPickerTab("site"); setView("picker"); } },
                   ]}
                 />
