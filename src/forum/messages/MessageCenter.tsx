@@ -681,6 +681,15 @@ function Conversation({
                 />
               </label>
             )}
+            {!m.mine && (
+              <Avatar
+                className="chat-face"
+                name={thread.peer.name}
+                initials={thread.peer.initials}
+                avatar={thread.peer.avatar}
+                size={34}
+              />
+            )}
             <div className="chat-bubble-body">
               {m.content && <RichText text={m.content} />}
               <AttachmentList files={m.attachments} />

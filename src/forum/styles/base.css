@@ -2947,6 +2947,17 @@ button:active:not(:disabled) {
 .chat-bubble.mine {
   align-self: flex-end;
 }
+/* 对方的头像放在消息左侧，和气泡顶端对齐 */
+.chat-bubble:not(.mine) {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  column-gap: 8px;
+  max-width: 88%;
+}
+.chat-bubble:not(.mine) > .chat-face { grid-column: 1; grid-row: 1 / span 2; }
+.chat-bubble:not(.mine) > .chat-bubble-body,
+.chat-bubble:not(.mine) > .chat-bubble-meta { grid-column: 2; }
+.chat-bubble:not(.mine) > .chat-bubble-body { justify-self: start; max-width: 100%; }
 .chat-bubble-body {
   background: var(--soft);
   border: 1px solid var(--border);

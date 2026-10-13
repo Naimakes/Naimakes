@@ -339,7 +339,20 @@ body:has(.landing-layer) .assistant-host { display: none !important; }
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
-.assistant-msg.is-bot { align-items: stretch; }
+/* 智能体的头像放在回复的左侧，和回复顶端对齐，不再单独占一行 */
+.assistant-msg.is-bot {
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 8px;
+}
+.assistant-msg-face { flex: none; margin-top: 2px; }
+.assistant-msg-main {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
 .assistant-markdown {
   padding: 12px 14px;
   border: 1px solid rgb(var(--paper-rim-rgb, 253 250 246) / .7);
