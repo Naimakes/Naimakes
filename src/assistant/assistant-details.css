@@ -122,7 +122,7 @@
   aspect-ratio: 1;
   min-width: 0;
   padding: 8px;
-  border-radius: 18px;
+  border-radius: 50%;
   background: var(--glass-sheen), var(--glass-bg, rgb(245 241 237 / .42));
   box-shadow: var(--glass-control-shadow);
 }

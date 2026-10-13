@@ -227,10 +227,12 @@
 .agent-shape {
   display: grid;
   place-items: center;
+  width: 46px;
   height: 46px;
+  justify-self: center;
   padding: 0;
   border: 1px solid var(--glass-border, rgb(0 0 0 / .1));
-  border-radius: 14px;
+  border-radius: 50%;
   background: var(--glass-bg, rgb(255 255 255 / .5));
   cursor: pointer;
   transition: box-shadow .2s ease, transform .25s var(--assistant-ease);

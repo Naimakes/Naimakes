@@ -45,11 +45,12 @@ export default function AssistantSettings() {
                   type="button"
                   role="radio"
                   aria-checked={prefs.shape === shape.id}
+                  aria-label={shape.label}
+                  title={shape.label}
                   className={"assistant-shape" + (prefs.shape === shape.id ? " is-active" : "")}
                   onClick={() => updatePrefs({ shape: shape.id })}
                 >
                   <ShapeThumb shape={shape.id} color={prefs.color} size={38} />
-                  <small>{shape.label}</small>
                 </LiquidButton>
               ))}
             </div>
