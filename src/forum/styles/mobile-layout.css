@@ -678,3 +678,42 @@
     display: none;
   }
 }
+
+/* 卡片：展开说明与阅读/赞同/评论去掉玻璃底板，三项统一紧凑靠右 */
+:root:root .text-disclosure-toggle {
+  min-height: 34px;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  box-shadow: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+:root:root :is(.community-section, .search-page, .profile-page, .library-layout, .app-shell) .post-footer > .post-stats {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: flex-end;
+  width: auto;
+  margin-left: auto;
+  gap: 2px;
+}
+:root:root :is(.community-section, .search-page, .profile-page, .library-layout, .app-shell) .post-footer > .post-stats > button.glass-btn {
+  width: auto;
+  min-width: 0;
+  height: 32px;
+  min-height: 32px;
+  padding: 0 8px;
+  gap: 5px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  box-shadow: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+:root:root .post-footer > .post-stats > .post-views { padding: 0 8px; }
+@media (hover: hover) and (pointer: fine) {
+  :root:root .post-footer > .post-stats > button.glass-btn:not(:disabled):hover { background: transparent; color: var(--glass-text); }
+}
