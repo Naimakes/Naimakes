@@ -238,7 +238,7 @@ function ChoicesCard({ message, active, tools }: { message: ChatMessage; active:
   );
 }
 
-function Message({ message, onLink, onRetry, last, tools, who }: { message: ChatMessage; onLink: (href: string) => void; onRetry: () => void; last: boolean; tools?: MessageTools; who?: Pick<Agent, "name" | "shape" | "color"> | null }) {
+function Message({ message, onLink, onRetry, last, tools, who, named }: { message: ChatMessage; onLink: (href: string) => void; onRetry: () => void; last: boolean; tools?: MessageTools; who?: Pick<Agent, "name" | "shape" | "color"> | null; named?: boolean }) {
   const menu = tools ? longPressMenu((event) => tools.onMenu(event, message)) : {};
   if (message.role === "user") {
     const editing = tools?.editing?.id === message.id;
@@ -271,109 +271,107 @@ function Message({ message, onLink, onRetry, last, tools, who }: { message: Chat
   const current = message.vi ?? count - 1;
   return (
     <div className={"assistant-msg is-bot" + (message.branch ? " is-branch" : "")} {...menu}>
-      {who && (
-        <span className="assistant-msg-who">
-          <AgentAvatar agent={who} size={20} />
-          {who.name}
-        </span>
-      )}
-      {message.content && (
-        <div className="assistant-markdown">
-          <ReactMarkdown
-            remarkPlugins={[remarkGfm]}
-            disallowedElements={["img"]}
-            components={{
-              a: ({ href = "", children }) => {
-                const internal = href.startsWith("/") && !href.startsWith("//");
-                return internal ? (
-                  <a href={href} onClick={(event) => { event.preventDefault(); onLink(href); }}>{children}</a>
-                ) : (
-                  <a href={href} target="_blank" rel="noopener noreferrer nofollow">{children}</a>
-                );
-              },
-            }}
-          >
-            {message.content}
-          </ReactMarkdown>
-        </div>
-      )}
-      {message.error && (
-        <div className="assistant-error" role="alert">
-          <span>{message.error}</span>
-          {last && (
-            <LiquidButton type="button" className="assistant-chip is-compact" onClick={onRetry}>
-              <RotateCcw size={13} />
-              重试
-            </LiquidButton>
-          )}
-        </div>
-      )}
-      {message.choices && <ChoicesCard message={message} active={last && !!tools?.idle && message.choices.picked === undefined} tools={tools} />}
-      {actions.length > 0 && (
-        <div className="assistant-actions">
-          {actions.map((action) => (
-            <ActionCard key={action.id} action={action} onLink={onLink} />
-          ))}
-        </div>
-      )}
-      {sources.length > 0 && (
-        <div className="assistant-sources">
-          <span className="assistant-sources-title">本站参考 · {sources.length}</span>
-          {sources.map((source) => (
-            <LiquidButton key={source.type + source.id} type="button" className="assistant-source" onClick={() => onLink(source.url)}>
-              <span className="assistant-source-kind">{sourceLabel(source.type)}</span>
-              <span className="assistant-source-body">
-                <strong>{source.title}</strong>
-                {(source.board || source.excerpt) && <small>{[source.board, source.excerpt].filter(Boolean).join(" · ")}</small>}
+      {who && <AgentAvatar agent={who} size={32} className="assistant-msg-face" />}
+      <div className="assistant-msg-main">
+        {named && who && <span className="assistant-msg-who">{who.name}</span>}
+        {message.content && (
+          <div className="assistant-markdown">
+            <ReactMarkdown
+              remarkPlugins={[remarkGfm]}
+              disallowedElements={["img"]}
+              components={{
+                a: ({ href = "", children }) => {
+                  const internal = href.startsWith("/") && !href.startsWith("//");
+                  return internal ? (
+                    <a href={href} onClick={(event) => { event.preventDefault(); onLink(href); }}>{children}</a>
+                  ) : (
+                    <a href={href} target="_blank" rel="noopener noreferrer nofollow">{children}</a>
+                  );
+                },
+              }}
+            >
+              {message.content}
+            </ReactMarkdown>
+          </div>
+        )}
+        {message.error && (
+          <div className="assistant-error" role="alert">
+            <span>{message.error}</span>
+            {last && (
+              <LiquidButton type="button" className="assistant-chip is-compact" onClick={onRetry}>
+                <RotateCcw size={13} />
+                重试
+              </LiquidButton>
+            )}
+          </div>
+        )}
+        {message.choices && <ChoicesCard message={message} active={last && !!tools?.idle && message.choices.picked === undefined} tools={tools} />}
+        {actions.length > 0 && (
+          <div className="assistant-actions">
+            {actions.map((action) => (
+              <ActionCard key={action.id} action={action} onLink={onLink} />
+            ))}
+          </div>
+        )}
+        {sources.length > 0 && (
+          <div className="assistant-sources">
+            <span className="assistant-sources-title">本站参考 · {sources.length}</span>
+            {sources.map((source) => (
+              <LiquidButton key={source.type + source.id} type="button" className="assistant-source" onClick={() => onLink(source.url)}>
+                <span className="assistant-source-kind">{sourceLabel(source.type)}</span>
+                <span className="assistant-source-body">
+                  <strong>{source.title}</strong>
+                  {(source.board || source.excerpt) && <small>{[source.board, source.excerpt].filter(Boolean).join(" · ")}</small>}
+                </span>
+                <ArrowUpRight size={14} />
+              </LiquidButton>
+            ))}
+          </div>
+        )}
+        {web.length > 0 && (
+          <div className="assistant-sources is-web">
+            <span className="assistant-sources-title">联网参考 · {web.length}</span>
+            {web.map((source) => (
+              <a key={source.url} className="assistant-source" href={source.url} target="_blank" rel="noopener noreferrer nofollow">
+                <span className="assistant-source-kind">网页</span>
+                <span className="assistant-source-body">
+                  <strong>{source.title}</strong>
+                  {(source.board || source.excerpt) && <small>{[source.board, source.excerpt].filter(Boolean).join(" · ")}</small>}
+                </span>
+                <ArrowUpRight size={14} />
+              </a>
+            ))}
+          </div>
+        )}
+        {tools && tools.idle && message.content && (
+          <div className="assistant-msg-tools" role="toolbar" aria-label="回答操作">
+            {count > 1 && (
+              <span className="assistant-versions" role="group" aria-label="回答版本">
+                <button type="button" aria-label="上一个回答" disabled={current <= 0} onClick={() => tools.onSwitch(message.id, current - 1)}>
+                  <ChevronLeft size={14} />
+                </button>
+                <em aria-live="polite">
+                  {current + 1} / {count}
+                </em>
+                <button type="button" aria-label="下一个回答" disabled={current >= count - 1} onClick={() => tools.onSwitch(message.id, current + 1)}>
+                  <ChevronRight size={14} />
+                </button>
               </span>
-              <ArrowUpRight size={14} />
-            </LiquidButton>
-          ))}
-        </div>
-      )}
-      {web.length > 0 && (
-        <div className="assistant-sources is-web">
-          <span className="assistant-sources-title">联网参考 · {web.length}</span>
-          {web.map((source) => (
-            <a key={source.url} className="assistant-source" href={source.url} target="_blank" rel="noopener noreferrer nofollow">
-              <span className="assistant-source-kind">网页</span>
-              <span className="assistant-source-body">
-                <strong>{source.title}</strong>
-                {(source.board || source.excerpt) && <small>{[source.board, source.excerpt].filter(Boolean).join(" · ")}</small>}
-              </span>
-              <ArrowUpRight size={14} />
-            </a>
-          ))}
-        </div>
-      )}
-      {tools && tools.idle && message.content && (
-        <div className="assistant-msg-tools" role="toolbar" aria-label="回答操作">
-          {count > 1 && (
-            <span className="assistant-versions" role="group" aria-label="回答版本">
-              <button type="button" aria-label="上一个回答" disabled={current <= 0} onClick={() => tools.onSwitch(message.id, current - 1)}>
-                <ChevronLeft size={14} />
-              </button>
-              <em aria-live="polite">
-                {current + 1} / {count}
-              </em>
-              <button type="button" aria-label="下一个回答" disabled={current >= count - 1} onClick={() => tools.onSwitch(message.id, current + 1)}>
-                <ChevronRight size={14} />
-              </button>
-            </span>
-          )}
-          <button type="button" aria-label="复制回答" title="复制" onClick={() => tools.onCopy(message)}>
-            {tools.copied === message.id ? <Check size={14} /> : <Copy size={14} />}
-          </button>
-          {message.id === tools.lastBotId && (
-            <button type="button" aria-label="重新生成" title="重新生成" onClick={tools.onRegenerate}>
-              <RefreshCw size={14} />
+            )}
+            <button type="button" aria-label="复制回答" title="复制" onClick={() => tools.onCopy(message)}>
+              {tools.copied === message.id ? <Check size={14} /> : <Copy size={14} />}
             </button>
-          )}
-          <button type="button" aria-label="从这里开新分支" title="新分支：整理之前的对话，带到一段新对话里" disabled={tools.branching} onClick={() => tools.onBranch(message)}>
-            {tools.branching ? <LoaderCircle size={14} className="spin" /> : <GitBranch size={14} />}
-          </button>
-        </div>
-      )}
+            {message.id === tools.lastBotId && (
+              <button type="button" aria-label="重新生成" title="重新生成" onClick={tools.onRegenerate}>
+                <RefreshCw size={14} />
+              </button>
+            )}
+            <button type="button" aria-label="从这里开新分支" title="新分支：整理之前的对话，带到一段新对话里" disabled={tools.branching} onClick={() => tools.onBranch(message)}>
+              {tools.branching ? <LoaderCircle size={14} className="spin" /> : <GitBranch size={14} />}
+            </button>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -1283,9 +1281,6 @@ export default function AssistantDock({ userId, shared = null }: { userId: strin
                   )}
                   <span className="assistant-identity-text">
                     <strong title={chatName}>{group ? `群聊（${chatAgents.length}）` : lead.name}</strong>
-                    <small aria-live="polite" title={chat.phase === "idle" ? chat.title : undefined}>
-                      {chat.phase === "idle" && chat.title ? chat.title : status}
-                    </small>
                   </span>
                   <ChevronRight size={16} aria-hidden="true" />
                 </LiquidButton>
@@ -1339,7 +1334,7 @@ export default function AssistantDock({ userId, shared = null }: { userId: strin
                   )
                 ) : (
                   chat.messages.map((message, index) => (
-                    <Message key={message.id} message={message} last={index === lastIndex} onLink={follow} onRetry={() => retryLast(page(), { visible })} tools={tools} who={group && message.role === "assistant" ? byId(message.agent || lead.id) : null} />
+                    <Message key={message.id} message={message} last={index === lastIndex} onLink={follow} onRetry={() => retryLast(page(), { visible })} tools={tools} who={message.role === "assistant" ? byId(message.agent || lead.id) : null} named={group} />
                   ))
                 )}
                 {chat.phase !== "idle" && <WorkingRow look={workLook} state={agentState} status={group || !lead.builtin ? `${replying.name}：${status}` : status} />}
@@ -1389,29 +1384,7 @@ export default function AssistantDock({ userId, shared = null }: { userId: strin
                     {fileError && <span className="assistant-attach-error" role="alert">{fileError}</span>}
                   </div>
                 )}
-                <div className="assistant-compose-row">
-                  <input
-                    ref={picker}
-                    type="file"
-                    hidden
-                    multiple
-                    accept={accept}
-                    onChange={(event) => {
-                      addFiles(Array.from(event.target.files || []));
-                      event.target.value = "";
-                    }}
-                  />
-                  <LiquidButton
-                    type="button"
-                    className="icon-button assistant-add"
-                    aria-label="添加附件（上传新文件、从图书馆选择，或搜索站内文章）"
-                    title="添加附件"
-                    aria-haspopup="menu"
-                    disabled={chat.phase !== "idle" || files.length >= MAX_FILES}
-                    onClick={(event) => attachMenu.open(event, null)}
-                  >
-                    <Plus size={18} />
-                  </LiquidButton>
+                <div className="assistant-compose-box">
                   <textarea
                     ref={input}
                     value={draft}
@@ -1439,27 +1412,52 @@ export default function AssistantDock({ userId, shared = null }: { userId: strin
                       }
                     }}
                   />
-                  <ThinkingGauge disabled={chat.phase !== "idle"} />
-                  <LiquidButton
-                    type="button"
-                    className={"icon-button assistant-mic" + (voice.listening ? " is-listening" : "")}
-                    aria-label={voice.listening ? "停止语音输入" : "语音输入"}
-                    aria-pressed={voice.listening}
-                    title={voiceSupported() ? (voice.listening ? "点一下结束语音输入" : "语音输入") : "当前浏览器不支持语音输入"}
-                    disabled={chat.phase !== "idle"}
-                    onClick={toggleVoice}
-                  >
-                    {voice.listening ? <Square size={12} fill="currentColor" /> : <Mic size={17} />}
-                  </LiquidButton>
-                  {chat.phase === "idle" ? (
-                    <LiquidButton type="submit" className="icon-button assistant-send" aria-label="发送" disabled={!draft.trim() && !files.length}>
-                      <ArrowUp size={17} />
+                  <div className="assistant-compose-row">
+                    <input
+                      ref={picker}
+                      type="file"
+                      hidden
+                      multiple
+                      accept={accept}
+                      onChange={(event) => {
+                        addFiles(Array.from(event.target.files || []));
+                        event.target.value = "";
+                      }}
+                    />
+                    <LiquidButton
+                      type="button"
+                      className="icon-button assistant-add"
+                      aria-label="添加附件（上传新文件、从图书馆选择，或搜索站内文章）"
+                      title="添加附件"
+                      aria-haspopup="menu"
+                      disabled={chat.phase !== "idle" || files.length >= MAX_FILES}
+                      onClick={(event) => attachMenu.open(event, null)}
+                    >
+                      <Plus size={18} />
                     </LiquidButton>
-                  ) : (
-                    <LiquidButton type="button" className="icon-button assistant-send is-stop" aria-label="停止回答" onClick={stopReply}>
-                      <Square size={13} fill="currentColor" />
+                    <span className="assistant-compose-gap" />
+                    <ThinkingGauge disabled={chat.phase !== "idle"} />
+                    <LiquidButton
+                      type="button"
+                      className={"icon-button assistant-mic" + (voice.listening ? " is-listening" : "")}
+                      aria-label={voice.listening ? "停止语音输入" : "语音输入"}
+                      aria-pressed={voice.listening}
+                      title={voiceSupported() ? (voice.listening ? "点一下结束语音输入" : "语音输入") : "当前浏览器不支持语音输入"}
+                      disabled={chat.phase !== "idle"}
+                      onClick={toggleVoice}
+                    >
+                      {voice.listening ? <Square size={12} fill="currentColor" /> : <Mic size={17} />}
                     </LiquidButton>
-                  )}
+                    {chat.phase === "idle" ? (
+                      <LiquidButton type="submit" className="icon-button assistant-send" aria-label="发送" disabled={!draft.trim() && !files.length}>
+                        <ArrowUp size={17} />
+                      </LiquidButton>
+                    ) : (
+                      <LiquidButton type="button" className="icon-button assistant-send is-stop" aria-label="停止回答" onClick={stopReply}>
+                        <Square size={13} fill="currentColor" />
+                      </LiquidButton>
+                    )}
+                  </div>
                 </div>
               </form>
               {toast && (

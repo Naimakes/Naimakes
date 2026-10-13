@@ -78,19 +78,21 @@
 
 .assistant-shapes {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(76px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(64px, 1fr));
+  justify-items: center;
   gap: 10px;
 }
+/* 头像一律是圆的：形状选项也是圆形，名字放在 title 和读屏标签里 */
 .assistant-settings .assistant-shape {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  min-height: 84px;
-  padding: 12px 6px 10px;
+  display: grid;
+  place-items: center;
+  width: 100%;
+  max-width: 72px;
+  aspect-ratio: 1;
+  min-height: 0;
+  padding: 0;
   border: 1px solid var(--glass-border, rgb(253 250 246 / .72));
-  border-radius: 18px;
+  border-radius: 50%;
   background: var(--glass-sheen), var(--glass-bg, rgb(245 241 237 / .42));
   box-shadow: var(--glass-control-shadow);
   color: var(--secondary, #646464);
@@ -102,10 +104,6 @@
   transition: transform .4s var(--assistant-ease);
 }
 .assistant-settings .assistant-shape:hover .assistant-thumb { transform: scale(1.08) rotate(-4deg); }
-.assistant-settings .assistant-shape small {
-  font-size: 11.5px;
-  line-height: 1.3;
-}
 .assistant-settings .assistant-shape.is-active {
   background: var(--glass-sheen), rgb(var(--paper-lift-rgb, 245 241 237) / .92);
   color: var(--text, #111);
@@ -147,8 +145,7 @@
   .assistant-preview { position: static; }
 }
 @media (max-width: 560px) {
-  .assistant-shapes { grid-template-columns: repeat(auto-fill, minmax(68px, 1fr)); gap: 8px; }
-  .assistant-settings .assistant-shape { min-height: 78px; }
+  .assistant-shapes { grid-template-columns: repeat(auto-fill, minmax(58px, 1fr)); gap: 8px; }
   .assistant-swatch { width: 38px; height: 38px; }
 }
 

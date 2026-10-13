@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent } from "react";
+import { useEffect, useId, useRef, useState, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent } from "react";
 import { thinkingModes, updatePrefs, usePrefs } from "./prefs";
 
 // 仪表盘图标：弧线填充的长度和指针的角度都跟随当前档位。
@@ -17,7 +17,7 @@ function GaugeIcon({ level }: { level: number }) {
   const filled = start + (sweep * (level + 0.5)) / thinkingModes.length;
   const [nx, ny] = point(filled, 5.2);
   return (
-    <svg viewBox="0 0 24 24" width="26" height="26" fill="none" aria-hidden="true">
+    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" aria-hidden="true">
       <path d={arc(start, start + sweep)} stroke="currentColor" strokeOpacity=".22" strokeWidth="2.2" strokeLinecap="round" />
       <path d={arc(start, filled)} stroke="var(--assistant-accent, #4169e8)" strokeWidth="2.2" strokeLinecap="round" />
       <line x1="12" y1="12" x2={nx} y2={ny} stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
@@ -26,10 +26,14 @@ function GaugeIcon({ level }: { level: number }) {
   );
 }
 
-// 思考强度：输入框里的仪表盘按钮，点开后是一条带档位的滑杆，可以拖动、点选或用方向键调整。
+// 滑杆两端留出的距离（px），等于滑块半宽，这样滑块停在两端时不会超出滑杆。
+const PAD = 18;
+
+// 思考强度：输入框里的仪表盘按钮，点开后是一条悬浮的滑杆，可以拖动、点选或用方向键调整。
 export function ThinkingGauge({ disabled = false }: { disabled?: boolean }) {
   const prefs = usePrefs();
   const [open, setOpen] = useState(false);
+  const [dragging, setDragging] = useState(false);
   const root = useRef<HTMLDivElement>(null);
   const track = useRef<HTMLDivElement>(null);
   const id = useId();
@@ -61,8 +65,7 @@ export function ThinkingGauge({ disabled = false }: { disabled?: boolean }) {
   const pick = (event: ReactPointerEvent) => {
     const box = track.current?.getBoundingClientRect();
     if (!box) return;
-    const pad = 26;
-    const ratio = (event.clientX - box.left - pad) / Math.max(1, box.width - pad * 2);
+    const ratio = (event.clientX - box.left - PAD) / Math.max(1, box.width - PAD * 2);
     choose(Math.round(Math.max(0, Math.min(1, ratio)) * last));
   };
   const onKey = (event: ReactKeyboardEvent) => {
@@ -92,7 +95,8 @@ export function ThinkingGauge({ disabled = false }: { disabled?: boolean }) {
           <strong className="assistant-gauge-title">{mode.label}</strong>
           <div
             ref={track}
-            className="assistant-gauge-track"
+            className={"assistant-gauge-track" + (dragging ? " is-dragging" : "")}
+            style={{ "--gauge-pad": `${PAD}px`, "--gauge-at": level / last } as CSSProperties}
             role="slider"
             tabIndex={0}
             aria-label="思考强度"
@@ -103,14 +107,19 @@ export function ThinkingGauge({ disabled = false }: { disabled?: boolean }) {
             onKeyDown={onKey}
             onPointerDown={(event) => {
               event.currentTarget.setPointerCapture(event.pointerId);
+              setDragging(true);
               pick(event);
             }}
             onPointerMove={(event) => event.currentTarget.hasPointerCapture(event.pointerId) && pick(event)}
+            onPointerUp={() => setDragging(false)}
+            onPointerCancel={() => setDragging(false)}
+            onLostPointerCapture={() => setDragging(false)}
           >
+            <span className="assistant-gauge-fill" />
             {thinkingModes.map((m, index) => (
-              <span key={m.id} className="assistant-gauge-stop" style={{ left: `calc(26px + (100% - 52px) * ${index / last})` }} />
+              <span key={m.id} className={"assistant-gauge-stop" + (index <= level ? " is-passed" : "")} style={{ left: `calc(var(--gauge-pad) + (100% - 2 * var(--gauge-pad)) * ${index / last})` }} />
             ))}
-            <span className="assistant-gauge-knob" style={{ left: `calc(26px + (100% - 52px) * ${level / last})` }} />
+            <span className="assistant-gauge-knob" />
           </div>
           <p className="assistant-gauge-hint">{mode.hint}</p>
         </div>
