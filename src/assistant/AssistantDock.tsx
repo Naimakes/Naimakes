@@ -262,7 +262,8 @@ function Message({ message, onLink, onRetry, last, tools, who }: { message: Chat
       </div>
     );
   }
-  const sources = (message.sources || []).slice(0, 4);
+  const sources = (message.sources || []).filter((s) => s.type !== "web").slice(0, 4);
+  const webSources = (message.sources || []).filter((s) => s.type === "web").slice(0, 6);
   const actions = message.actions || [];
   const empty = !message.content && !message.error && !actions.length && !message.choices;
   if (empty) return null;
@@ -327,6 +328,21 @@ function Message({ message, onLink, onRetry, last, tools, who }: { message: Chat
               </span>
               <ArrowUpRight size={14} />
             </LiquidButton>
+          ))}
+        </div>
+      )}
+      {webSources.length > 0 && (
+        <div className="assistant-sources">
+          <span className="assistant-sources-title">网络参考 · {webSources.length}</span>
+          {webSources.map((source) => (
+            <a key={source.id} className="assistant-source is-web" href={source.url} target="_blank" rel="noopener noreferrer nofollow">
+              <span className="assistant-source-kind">网页</span>
+              <span className="assistant-source-body">
+                <strong>{source.title}</strong>
+                {(source.board || source.excerpt) && <small>{[source.board, source.excerpt].filter(Boolean).join(" · ")}</small>}
+              </span>
+              <ArrowUpRight size={14} />
+            </a>
           ))}
         </div>
       )}

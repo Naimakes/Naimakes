@@ -64,6 +64,8 @@ npm start                # 启动 API 服务（同时托管 dist/）
 | `ASSISTANT_MODEL` / `ASSISTANT_EFFORT` | 助手使用的模型，以及未选择思考模式时的默认推理强度（DeepSeek V4.1 Flash 填 `deepseek-flash`） |
 | `ASSISTANT_TITLE_MODEL` | 生成对话标题的轻量模型，留空时 DeepSeek 用 `deepseek-flash`、Claude 用 `claude-haiku-5-5` |
 | `ASSISTANT_RATE_LIMIT` / `ASSISTANT_DAILY_LIMIT` | 助手的频率与每日用量限制 |
+| `WEB_SEARCH_PROVIDER` / `WEB_SEARCH_API_KEY` / `WEB_SEARCH_URL` | 助手的联网搜索，见下文「AI 助手的联网搜索」；都留空则不开启 |
+| `WEB_SEARCH_PER_ANSWER` | 每次回答最多联网搜索几次，默认 5 |
 
 ## 部署（Docker Compose）
 
@@ -90,6 +92,28 @@ npm start                # 启动 API 服务（同时托管 dist/）
 | 深入 | `high` |
 
 用户最高只能选到 `high`；`xhigh` / `max` 只能由管理员通过 `ASSISTANT_EFFORT` 设置。
+
+## AI 助手的联网搜索
+
+配置搜索服务后，Naimakes 和所有智能体（包括定时任务）都多一个 `web_search` 工具：用户问到新闻、最新进展、实时数据、本站没有的事实，或者直接说「上网查一下」时，模型会自己决定去搜索，再依据网页回答并附上来源链接；回答下方会多出「网络参考」，点开在新标签页打开原网页。只关于本站内容的问题仍然只用站内资料。
+
+搜索由本站服务器调用搜索 API 完成，所以 **DeepSeek 也能用**（DeepSeek 的 Anthropic 兼容接口没有 Claude 自带的服务端联网搜索）。支持的服务商：
+
+| `WEB_SEARCH_PROVIDER` | 说明 | 需要的配置 |
+| --- | --- | --- |
+| `bocha` | [博查](https://open.bochaai.com)，国内服务器可直接访问，推荐和 DeepSeek 搭配 | `WEB_SEARCH_API_KEY` |
+| `tavily` | [Tavily](https://tavily.com)，返回的正文摘录较长 | `WEB_SEARCH_API_KEY` |
+| `brave` | [Brave Search API](https://brave.com/search/api/) | `WEB_SEARCH_API_KEY` |
+| `searxng` | 自建的 [SearXNG](https://docs.searxng.org)，免费；需要在实例的 `settings.yml` 的 `search.formats` 里加上 `json` | `WEB_SEARCH_URL`（实例地址） |
+
+最简单的配置（博查）：
+
+```bash
+WEB_SEARCH_PROVIDER=bocha
+WEB_SEARCH_API_KEY=sk-...
+```
+
+只填 `WEB_SEARCH_API_KEY` 时默认用博查，只填 `WEB_SEARCH_URL` 时默认用 SearXNG。每次回答最多搜索 `WEB_SEARCH_PER_ANSWER` 次（默认 5），每次最多 10 条结果。网页内容只作为参考数据交给模型，其中的指令不会被执行。
 
 ## AI 助手的对话历史与分享
 

@@ -480,12 +480,14 @@ body:has(.landing-layer) .assistant-host { display: none !important; }
   color: var(--assistant-ink);
   text-align: left;
 }
+.assistant-panel a.assistant-source { text-decoration: none; }
 .assistant-panel .assistant-source > svg {
   flex: none;
   color: var(--assistant-soft);
   transition: transform .3s var(--assistant-ease);
 }
 .assistant-panel .assistant-source:hover > svg { transform: translate(2px, -2px); }
+.assistant-panel a.assistant-source:focus-visible { outline: 2px solid var(--assistant-ink); outline-offset: 2px; }
 .assistant-source-kind {
   flex: none;
   min-width: 36px;
